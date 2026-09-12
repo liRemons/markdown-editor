@@ -1,12 +1,17 @@
 {
   "name": "remons-markdown-editor",
-  "version": "0.1.0",
+  "version": "1.0.0-beta.1",
   "type": "module",
-  "description": "A reusable React Markdown editor component with toolbar, preview, and custom container support",
+  "description": "一个可复用的 React Markdown 编辑器组件，支持工具栏、预览和自定义容器",
   "main": "dist/index.cjs",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
   "style": "dist/index.css",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/remons/markdown-editor"
+  },
+  "homepage": "https://github.com/remons/markdown-editor#readme",
   "sideEffects": [
     "*.css"
   ],
