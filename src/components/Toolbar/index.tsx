@@ -4,7 +4,7 @@ import { Button } from 'antd'
 import { FullscreenOutlined, FullscreenExitOutlined } from '@ant-design/icons'
 import { useToolbar } from './hooks/useToolbar'
 import { ToolbarItemRenderer } from './renderers/ToolbarItemRenderer'
-import TableDropdown from './renderers/TableDropdown'
+import TableDropdown from './renderers/TablePicker/TableDropdown'
 import type { ToolbarButtonConfig } from '../../types'
 
 interface ToolbarProps {

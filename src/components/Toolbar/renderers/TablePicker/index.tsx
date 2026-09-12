@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import styles from './TablePicker.module.less'
+import styles from './index.module.less'
 
 interface TableSize {
   rows: number

@@ -2,7 +2,7 @@ import React, { useCallback, useRef } from 'react'
 import { EditorView } from '@codemirror/view'
 import { Button, Dropdown } from 'antd'
 import { TableOutlined } from '@ant-design/icons'
-import TablePicker from './TablePicker'
+import TablePicker from './index'
 
 export default function TableDropdown({ editorView }: { editorView: EditorView | null }) {
   const [open, setOpen] = React.useState(false)
