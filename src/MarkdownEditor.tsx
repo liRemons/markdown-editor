@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react'
+import { useState, useRef, useCallback, useEffect, forwardRef, useImperativeHandle } from 'react'
 import Editor from './components/Editor'
 import Preview from './components/Preview'
 import SplitPanels from './components/Panel/SplitPanels'
@@ -8,17 +8,62 @@ import componentRegistry from './registry/componentRegistry'
 import { updateContainerProps, insertContainer } from './utils/writeContainer'
 import type { ToolbarButtonConfig } from './types'
 import { ReadOutlined } from '@ant-design/icons'
-import defaultContent from './test.md?raw'
 import './App.css'
 
-function App() {
-  const [content, setContent] = useState(defaultContent)
-  const [scrollDomReady, setScrollDomReady] = useState(false)
-  const scrollDOMRef = useRef<HTMLElement | null>(null)
-  const [previewEl, setPreviewEl] = useState<HTMLDivElement | null>(null)
+export interface MarkdownEditorRef {
+  getContent: () => string
+}
+
+export interface MarkdownEditorProps {
+  /** 初始内容 */
+  defaultValue?: string
+  /** 受控内容 */
+  value?: string
+  /** 内容变化回调 */
+  onChange?: (value: string) => void
+  /** 是否显示预览面板 */
+  showPreview?: boolean
+  /** 是否支持全屏 */
+  fullscreen?: boolean
+}
+
+export default forwardRef<MarkdownEditorRef, MarkdownEditorProps>(function MarkdownEditor({
+  defaultValue = '',
+  value,
+  onChange,
+  showPreview = true,
+  fullscreen: fullscreenProp = false,
+}, ref) {
+  const [content, setContent] = useState(value ?? defaultValue)
   const [editorView, setEditorView] = useState<any>(null)
+  const scrollDOMRef = useRef<HTMLElement | null>(null)
+  const previewElRef = useRef<HTMLDivElement | null>(null)
   const [fullscreen, setFullscreen] = useState(false)
 
+  // 容器编辑弹窗状态
+  const [dialogVisible, setDialogVisible] = useState(false)
+  const [dialogTypeName, setDialogTypeName] = useState('')
+  const [dialogProps, setDialogProps] = useState<Record<string, string>>({})
+  const [dialogPropsRange, setDialogPropsRange] = useState<[number, number]>([0, 0])
+
+  // 受控模式：外部 value 变化时同步
+  useEffect(() => {
+    if (value !== undefined) {
+      setContent(value)
+    }
+  }, [value])
+
+  const internalSetContent = useCallback((newContent: string) => {
+    setContent(newContent)
+    onChange?.(newContent)
+  }, [onChange])
+
+  // 暴露 getContent 方法
+  useImperativeHandle(ref, () => ({
+    getContent: () => content,
+  }), [content])
+
+  // 全屏切换
   const toggleFullscreen = useCallback(() => {
     if (document.fullscreenElement) {
       document.exitFullscreen().catch((e) => {
@@ -44,7 +89,6 @@ function App() {
       setFullscreen(!!document.fullscreenElement)
     }
     document.addEventListener('fullscreenchange', handleFullscreenChange)
-    // WebKit/Chrome compatibility
     document.addEventListener('webkitfullscreenchange', handleFullscreenChange)
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange)
@@ -52,26 +96,30 @@ function App() {
     }
   }, [])
 
-  // 弹窗编辑状态
-  const [dialogVisible, setDialogVisible] = useState(false)
-  const [dialogTypeName, setDialogTypeName] = useState('')
-  const [dialogProps, setDialogProps] = useState<Record<string, string>>({})
-  const [dialogPropsRange, setDialogPropsRange] = useState<[number, number]>([0, 0])
+  // 从注册中心自动生成工具栏按钮
+  const extraToolbarItems: ToolbarButtonConfig[] = componentRegistry.getAll().map(schema => {
+    const defaultProps: Record<string, string> = {}
+    for (const field of schema.fields) {
+      defaultProps[field.key] = field.defaultValue ?? ''
+    }
+    const iconNode = schema.icon ?? <ReadOutlined />
+    return {
+      id: `container-${schema.name}`,
+      label: schema.label,
+      icon: () => iconNode,
+      handler: (view, _state) => insertContainer(view, schema.name, defaultProps),
+    }
+  })
 
+  // 滚动同步
   const handleScrollReady = useCallback((scrollDOM: HTMLElement) => {
     scrollDOMRef.current = scrollDOM
-    setScrollDomReady(true)
-  }, [])
-
-  const handleViewReady = useCallback((view: any) => {
-    setEditorView(view)
   }, [])
 
   // 设置滚动同步
   useEffect(() => {
-    if (!scrollDomReady) return
     const source = scrollDOMRef.current
-    const target = previewEl
+    const target = previewElRef.current
     if (!source || !target) return
 
     let rafId: number | null = null
@@ -80,7 +128,7 @@ function App() {
       if (rafId) return
       rafId = requestAnimationFrame(() => {
         const s = scrollDOMRef.current
-        const t = previewEl
+        const t = previewElRef.current
         if (!s || !t) { rafId = null; return }
         const sourceScrollHeight = s.scrollHeight - s.clientHeight
         if (sourceScrollHeight <= 0) { rafId = null; return }
@@ -99,10 +147,14 @@ function App() {
       source.removeEventListener('scroll', listener)
       if (rafId) cancelAnimationFrame(rafId)
     }
-  }, [scrollDomReady, previewEl])
+  }, [previewElRef.current])
 
   const handlePreviewRef = useCallback((node: HTMLDivElement | null) => {
-    setPreviewEl(node)
+    previewElRef.current = node
+  }, [])
+
+  const handleViewReady = useCallback((view: any) => {
+    setEditorView(view)
   }, [])
 
   // 编辑容器属性时触发
@@ -116,7 +168,6 @@ function App() {
   // 保存容器属性
   const handleDialogSave = useCallback((newProps: Record<string, string>) => {
     setDialogVisible(false)
-    // 更新编辑器中的容器属性
     if (editorView) {
       updateContainerProps(editorView, dialogPropsRange[0], dialogPropsRange[1], newProps)
     }
@@ -127,39 +178,41 @@ function App() {
     setDialogVisible(false)
   }, [])
 
-  const extraToolbarItems: ToolbarButtonConfig[] = componentRegistry.getAll().map(schema => {
-    const defaultProps: Record<string, string> = {}
-    for (const field of schema.fields) {
-      defaultProps[field.key] = field.defaultValue ?? ''
-    }
-    return {
-      id: `container-${schema.name}`,
-      label: schema.label,
-      icon: ReadOutlined,
-      handler: (view, _state) => insertContainer(view, schema.name, defaultProps),
-    }
-  })
-
   return (
     <div className={fullscreen ? 'app fullscreen' : 'app'}>
-      <Toolbar editorView={editorView} fullscreen={fullscreen} onToggleFullscreen={toggleFullscreen} extraItems={extraToolbarItems} />
-      <SplitPanels
-        leftPanel={
-          <Editor
-            value={content}
-            onChange={setContent}
-            onScrollReady={handleScrollReady}
-            onViewReady={handleViewReady}
-            onEditContainer={handleEditContainer}
-          />
-        }
-        rightPanel={
-          <Preview
-            content={content}
-            ref={handlePreviewRef}
-          />
-        }
+      <Toolbar
+        editorView={editorView}
+        fullscreen={fullscreen}
+        onToggleFullscreen={fullscreenProp ? toggleFullscreen : undefined}
+        extraItems={extraToolbarItems}
       />
+      {showPreview ? (
+        <SplitPanels
+          leftPanel={
+            <Editor
+              value={content}
+              onChange={internalSetContent}
+              onScrollReady={handleScrollReady}
+              onViewReady={handleViewReady}
+              onEditContainer={handleEditContainer}
+            />
+          }
+          rightPanel={
+            <Preview
+              content={content}
+              ref={handlePreviewRef}
+            />
+          }
+        />
+      ) : (
+        <Editor
+          value={content}
+          onChange={internalSetContent}
+          onScrollReady={handleScrollReady}
+          onViewReady={handleViewReady}
+          onEditContainer={handleEditContainer}
+        />
+      )}
       {/* 容器属性编辑弹窗 */}
       <EditDialog
         visible={dialogVisible}
@@ -170,6 +223,4 @@ function App() {
       />
     </div>
   )
-}
-
-export default App
+})

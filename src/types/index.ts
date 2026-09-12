@@ -11,7 +11,7 @@ export interface EditorState {
 
 // 工具栏按钮配置接口 — 单一递归类型，支持嵌套 children
 export interface ToolbarButtonConfig {
-  id: string
+  id?: string
   icon?: React.ComponentType
   label?: string
   // 支持嵌套子项（如 dropdown 菜单）
@@ -47,6 +47,8 @@ export interface ComponentSchema {
   name: string
   /** 工具栏按钮显示的标签 */
   label: string
+  /** 工具栏按钮显示的图标 */
+  icon?: React.ReactNode
   /** 弹窗属性配置 — 用于定义 Markdown 内容中需要填充的字段 */
   fields: DialogField[]
   /**

@@ -1,13 +1,44 @@
 {
-  "name": "markdown-demo",
-  "private": true,
-  "version": "0.0.0",
+  "name": "remons-markdown-editor",
+  "version": "0.1.0",
   "type": "module",
+  "description": "A reusable React Markdown editor component with toolbar, preview, and custom container support",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "style": "dist/index.css",
+  "sideEffects": [
+    "*.css"
+  ],
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./style.css": "./dist/index.css"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:lib": "tsup",
     "lint": "oxlint",
     "preview": "vite preview"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0 || ^19.0.0",
+    "react-dom": "^18.0.0 || ^19.0.0"
   },
   "dependencies": {
     "@ant-design/icons": "^6.3.4",
@@ -37,7 +68,9 @@
     "@types/react-dom": "^19.2.4",
     "@vitejs/plugin-react": "^6.1.0",
     "oxlint": "^1.79.0",
+    "tsup": "^8.5.1",
     "typescript": "~6.0.2",
     "vite": "^8.2.2"
-  }
+  },
+  "license": "MIT"
 }
