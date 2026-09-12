@@ -67,11 +67,24 @@
   min-width: 32px;
   height: 32px;
   padding: 0 8px;
+  border-color: transparent !important;
+  box-shadow: none !important;
 }
 
 .toolbar-button.ant-btn:hover {
   background: #e1e4e8;
   color: #0969da;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.toolbar-button.ant-btn:active {
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+:where(.css-dev-only-do-not-override-u6izyw).ant-btn:not(:disabled):not(.ant-btn-disabled):hover {
+  border: none !important
 }
 
 .toolbar-separator {

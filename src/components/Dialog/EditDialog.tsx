@@ -1,5 +1,5 @@
-import { useEffect } from 'react'
-import { Modal, Form, Input, Select } from 'antd'
+import { useState, useMemo } from 'react'
+import { Modal } from 'antd'
 import componentRegistry from '../../registry/componentRegistry'
 
 /**
@@ -20,39 +20,34 @@ interface EditDialogProps {
 
 /**
  * 属性编辑弹窗组件
- * 根据组件 schema 动态渲染表单字段
+ * 根据组件 schema 的 renderDialog 函数渲染弹窗内容
  */
 export default function EditDialog({ visible, typeName, currentProps, onSave, onClose }: EditDialogProps) {
   const schema = componentRegistry.get(typeName)
-  const [form] = Form.useForm()
+  const [formProps, setFormProps] = useState<Record<string, string>>({})
 
-  // 当弹窗打开时，设置表单值
-  useEffect(() => {
-    if (visible && schema) {
-      const values: Record<string, string> = {}
-      for (const field of schema.fields) {
-        values[field.key] = currentProps[field.key] ?? field.defaultValue ?? ''
-      }
-      form.setFieldsValue(values)
+  // 当弹窗打开时，初始化表单值
+  const mergedProps = useMemo(() => {
+    if (!schema) return currentProps
+    const defaults: Record<string, string> = {}
+    for (const field of schema.fields) {
+      defaults[field.key] = field.defaultValue ?? ''
     }
-  }, [visible, schema, currentProps, form])
+    return { ...defaults, ...currentProps }
+  }, [schema, currentProps])
 
-  const handleOk = async () => {
-    if (!schema) return
-    try {
-      const values = await form.validateFields()
-      const newProps: Record<string, string> = {}
-      for (const field of schema.fields) {
-        newProps[field.key] = values[field.key] ?? field.defaultValue ?? ''
-      }
-      onSave(newProps)
-    } catch {
-      // 验证失败，不执行操作
-    }
+  const handleDialogChange = (key: string, value: string) => {
+    setFormProps(prev => ({ ...prev, [key]: value }))
+  }
+
+  const handleOk = () => {
+    const finalProps = visible ? { ...mergedProps, ...formProps } : mergedProps
+    onSave(finalProps)
+    setFormProps({})
   }
 
   const handleClose = () => {
-    form.resetFields()
+    setFormProps({})
     onClose()
   }
 
@@ -69,27 +64,7 @@ export default function EditDialog({ visible, typeName, currentProps, onSave, on
       okText="保存"
       cancelText="取消"
     >
-      <Form form={form} layout="vertical">
-        {schema.fields.map((field) => (
-          <Form.Item
-            key={field.key}
-            name={field.key}
-            label={field.label}
-          >
-            {field.type === 'textarea' ? (
-              <Input.TextArea rows={3} />
-            ) : field.type === 'select' && field.options ? (
-              <Select options={field.options} />
-            ) : field.type === 'color' ? (
-              <Input type="color" />
-            ) : field.type === 'number' ? (
-              <Input type="number" />
-            ) : (
-              <Input />
-            )}
-          </Form.Item>
-        ))}
-      </Form>
+      {schema.renderDialog(visible ? { ...mergedProps, ...formProps } : mergedProps, handleDialogChange)}
     </Modal>
   )
 }
