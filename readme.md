@@ -39,7 +39,7 @@ export default function App() {
 
 ## 自定义容器
 
-通过 `useRegisterToolbar` hook 注册自定义容器组件：
+通过 `useRegisterToolbar` hook 注册自定义容器组件，支持单个或批量注册：
 
 ```tsx
 import { MarkdownEditor, useRegisterToolbar } from 'remons-markdown-editor'
@@ -61,7 +61,17 @@ const schema = {
 }
 
 export default function App() {
+  // 单个注册
   useRegisterToolbar(schema)
+  return <MarkdownEditor />
+}
+```
+
+### 批量注册
+
+```tsx
+export default function App() {
+  useRegisterToolbar([schema1, schema2, schema3])
   return <MarkdownEditor />
 }
 ```

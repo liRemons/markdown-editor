@@ -3,11 +3,11 @@ import componentRegistry from '../registry/componentRegistry'
 import type { ComponentSchema } from '../types'
 
 /**
- * 注册自定义容器组件到工具栏。
+ * 注册自定义容器组件到工具栏。支持单个或批量注册。
  * 支持 linkCard 形式的 schema（name + fields + renderDialog）。
  * fields 定义 Markdown 属性字段，renderDialog 定义弹窗内容。
  * 
- * @example
+ * @example 单个注册
  * ```tsx
  * const schema: ComponentSchema = {
  *   name: 'alert',
@@ -24,12 +24,26 @@ import type { ComponentSchema } from '../types'
  *   return <MarkdownEditor />
  * }
  * ```
+ * 
+ * @example 批量注册
+ * ```tsx
+ * function MyPage() {
+ *   useRegisterToolbar([schema1, schema2, schema3])
+ *   return <MarkdownEditor />
+ * }
+ * ```
  */
-export function useRegisterToolbar(schema: ComponentSchema) {
+export function useRegisterToolbar(schemas: ComponentSchema | ComponentSchema[]) {
+  const schemaList: ComponentSchema[] = Array.isArray(schemas) ? schemas : [schemas]
+
   useEffect(() => {
-    componentRegistry.register(schema.name, schema)
+    schemaList.forEach(schema => {
+      componentRegistry.register(schema.name, schema)
+    })
     return () => {
-      componentRegistry.unregister(schema.name)
+      schemaList.forEach(schema => {
+        componentRegistry.unregister(schema.name)
+      })
     }
-  }, [schema])
+  }, [schemaList])
 }
