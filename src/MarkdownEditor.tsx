@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect, forwardRef, useImperativeHandle } from 'react'
+import { message } from 'antd'
 import Editor from './components/Editor'
 import Preview from './components/Preview'
 import SplitPanels from './components/Panel/SplitPanels'
@@ -6,10 +7,11 @@ import Toolbar from './components/Toolbar'
 import EditDialog from './components/Dialog/EditDialog'
 import componentRegistry from './registry/componentRegistry'
 import { updateContainerProps, insertContainer } from './utils/writeContainer'
-import type { ToolbarButtonConfig } from './types'
+import type { ToolbarButtonConfig, ImageUploadConfig } from './types'
 import type { PreviewOptions } from './components/Preview'
 import { ReadOutlined } from '@ant-design/icons'
-import './App.css'
+import { useFullscreen } from './hooks/useFullscreen'
+import { useScrollSync } from './hooks/useScrollSync'
 
 export interface MarkdownEditorRef {
   getContent: () => string
@@ -28,6 +30,8 @@ export interface MarkdownEditorProps {
   fullscreen?: boolean
   /** Preview 渲染配置 */
   previewOptions?: PreviewOptions
+  /** 图片上传配置 */
+  uploadConfig?: ImageUploadConfig
 }
 
 export default forwardRef<MarkdownEditorRef, MarkdownEditorProps>(function MarkdownEditor({
@@ -37,12 +41,14 @@ export default forwardRef<MarkdownEditorRef, MarkdownEditorProps>(function Markd
   showPreview = true,
   fullscreen: fullscreenProp = false,
   previewOptions,
+  uploadConfig,
 }, ref) {
   const [content, setContent] = useState(value ?? defaultValue)
   const [editorView, setEditorView] = useState<any>(null)
   const scrollDOMRef = useRef<HTMLElement | null>(null)
   const previewElRef = useRef<HTMLDivElement | null>(null)
-  const [fullscreen, setFullscreen] = useState(false)
+  const { fullscreen, toggleFullscreen } = useFullscreen()
+  useScrollSync(scrollDOMRef, previewElRef)
 
   // 容器编辑弹窗状态
   const [dialogVisible, setDialogVisible] = useState(false)
@@ -67,43 +73,10 @@ export default forwardRef<MarkdownEditorRef, MarkdownEditorProps>(function Markd
     getContent: () => content,
   }), [content])
 
-  // 全屏切换
-  const toggleFullscreen = useCallback(() => {
-    if (document.fullscreenElement) {
-      document.exitFullscreen().catch((e) => {
-        console.error('退出全屏失败:', e)
-      })
-    } else {
-      const el = document.documentElement
-      const requestMethod = el.requestFullscreen ||
-        (el as any).webkitRequestFullscreen ||
-        (el as any).mozRequestFullScreen ||
-        (el as any).msRequestFullscreen
-      if (requestMethod) {
-        requestMethod.call(el).catch((e) => {
-          console.error('进入全屏失败:', e)
-        })
-      }
-    }
-  }, [])
-
-  // Listen for fullscreen change events
-  useEffect(() => {
-    const handleFullscreenChange = () => {
-      setFullscreen(!!document.fullscreenElement)
-    }
-    document.addEventListener('fullscreenchange', handleFullscreenChange)
-    document.addEventListener('webkitfullscreenchange', handleFullscreenChange)
-    return () => {
-      document.removeEventListener('fullscreenchange', handleFullscreenChange)
-      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange)
-    }
-  }, [])
-
   // 从注册中心自动生成工具栏按钮
   const extraToolbarItems: ToolbarButtonConfig[] = componentRegistry.getAll().map(schema => {
     const defaultProps: Record<string, string> = {}
-    for (const field of schema.fields) {
+    for (const field of schema?.fields ?? []) {
       defaultProps[field.key] = field.defaultValue ?? ''
     }
     const iconNode = schema.icon ?? <ReadOutlined />
@@ -115,43 +88,10 @@ export default forwardRef<MarkdownEditorRef, MarkdownEditorProps>(function Markd
     }
   })
 
-  // 滚动同步
+  // 滚动同步 (already handled by useScrollSync hook)
   const handleScrollReady = useCallback((scrollDOM: HTMLElement) => {
     scrollDOMRef.current = scrollDOM
   }, [])
-
-  // 设置滚动同步
-  useEffect(() => {
-    const source = scrollDOMRef.current
-    const target = previewElRef.current
-    if (!source || !target) return
-
-    let rafId: number | null = null
-
-    const listener = () => {
-      if (rafId) return
-      rafId = requestAnimationFrame(() => {
-        const s = scrollDOMRef.current
-        const t = previewElRef.current
-        if (!s || !t) { rafId = null; return }
-        const sourceScrollHeight = s.scrollHeight - s.clientHeight
-        if (sourceScrollHeight <= 0) { rafId = null; return }
-        const ratio = s.scrollTop / sourceScrollHeight
-        const targetScrollHeight = t.scrollHeight - t.clientHeight
-        if (targetScrollHeight > 0) {
-          t.scrollTop = ratio * targetScrollHeight
-        }
-        rafId = null
-      })
-    }
-
-    source.addEventListener('scroll', listener, { passive: true })
-
-    return () => {
-      source.removeEventListener('scroll', listener)
-      if (rafId) cancelAnimationFrame(rafId)
-    }
-  }, [previewElRef.current])
 
   const handlePreviewRef = useCallback((node: HTMLDivElement | null) => {
     previewElRef.current = node
@@ -189,6 +129,7 @@ export default forwardRef<MarkdownEditorRef, MarkdownEditorProps>(function Markd
         fullscreen={fullscreen}
         onToggleFullscreen={fullscreenProp ? toggleFullscreen : undefined}
         extraItems={extraToolbarItems}
+        uploadConfig={uploadConfig}
       />
       {showPreview ? (
         <SplitPanels
@@ -199,6 +140,8 @@ export default forwardRef<MarkdownEditorRef, MarkdownEditorProps>(function Markd
               onScrollReady={handleScrollReady}
               onViewReady={handleViewReady}
               onEditContainer={handleEditContainer}
+              uploadConfig={uploadConfig}
+              onMessageNoUploadConfig={() => message.warning('请先配置图片上传功能')}
             />
           }
           rightPanel={
@@ -216,6 +159,8 @@ export default forwardRef<MarkdownEditorRef, MarkdownEditorProps>(function Markd
           onScrollReady={handleScrollReady}
           onViewReady={handleViewReady}
           onEditContainer={handleEditContainer}
+          uploadConfig={uploadConfig}
+          onMessageNoUploadConfig={() => message.warning('请先配置图片上传功能')}
         />
       )}
       {/* 容器属性编辑弹窗 */}

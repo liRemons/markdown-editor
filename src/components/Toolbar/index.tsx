@@ -5,7 +5,7 @@ import { FullscreenOutlined, FullscreenExitOutlined } from '@ant-design/icons'
 import { useToolbar } from './hooks/useToolbar'
 import { ToolbarItemRenderer } from './renderers/ToolbarItemRenderer'
 import TableDropdown from './renderers/TablePicker/TableDropdown'
-import type { ToolbarButtonConfig } from '../../types'
+import type { ToolbarButtonConfig, ImageUploadConfig } from '../../types'
 
 interface ToolbarProps {
   editorView: EditorView | null
@@ -13,29 +13,28 @@ interface ToolbarProps {
   onToggleFullscreen?: () => void
   /** 第三方扩展的按钮配置，将追加到工具栏末尾 */
   extraItems?: ToolbarButtonConfig[]
+  /** 图片上传配置 */
+  uploadConfig?: ImageUploadConfig
 }
 
-export default function Toolbar({ editorView, fullscreen, onToggleFullscreen, extraItems }: ToolbarProps) {
-  const { config, handleClick } = useToolbar(editorView, extraItems)
+export default function Toolbar({ editorView, fullscreen = true, onToggleFullscreen, extraItems, uploadConfig }: ToolbarProps) {
+  const { config, handleClick } = useToolbar(editorView, { extraItems, uploadConfig })
 
   const renderFullscreen = useCallback(() => {
     if (!onToggleFullscreen) return null
     const Icon = fullscreen ? FullscreenExitOutlined : FullscreenOutlined
     return (
-      <>
-        <div className="toolbar-separator" />
-        <Button
-          className="toolbar-button"
-          type="text"
-          size="small"
-          title={fullscreen ? '退出全屏' : '全屏'}
-          onClick={() => {
-            onToggleFullscreen()
-          }}
-        >
-          <Icon />
-        </Button>
-      </>
+      <Button
+        className="toolbar-button"
+        type="text"
+        size="small"
+        title={fullscreen ? '退出全屏' : '全屏'}
+        onClick={() => {
+          onToggleFullscreen()
+        }}
+      >
+        <Icon />
+      </Button>
     )
   }, [fullscreen, onToggleFullscreen])
 
@@ -57,7 +56,6 @@ export default function Toolbar({ editorView, fullscreen, onToggleFullscreen, ex
           />
         )
       })}
-      <div className="toolbar-separator" />
       <TableDropdown editorView={editorView} />
       {renderFullscreen()}
     </div>

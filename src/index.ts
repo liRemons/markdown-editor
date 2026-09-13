@@ -10,5 +10,6 @@ export type {
   ComponentSchema,
   DialogField,
   ToolbarButtonConfig,
+  ImageUploadConfig,
 } from './types'
 export type { PreviewOptions } from './components/Preview'

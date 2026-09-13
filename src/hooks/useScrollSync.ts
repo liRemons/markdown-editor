@@ -1,50 +1,42 @@
-import { useEffect, type RefObject } from 'react'
+import { useEffect, useRef } from 'react'
 
-const useScrollSync = (
-  sourceRef: RefObject<HTMLElement | null>,
-  targetRef: RefObject<HTMLElement | null>
-): void => {
+/**
+ * 滚动同步 Hook
+ * 将源滚动容器的滚动位置同步到目标预览容器
+ */
+export function useScrollSync(
+  sourceRef: React.RefObject<HTMLElement | null>,
+  targetRef: React.RefObject<HTMLDivElement | null>
+) {
+  const rafIdRef = useRef<number | null>(null)
+
   useEffect(() => {
     const source = sourceRef.current
     const target = targetRef.current
     if (!source || !target) return
 
-    let rafId: number | null = null
-
     const listener = () => {
-      console.log('scrolling')
-      if (rafId) return
-      rafId = requestAnimationFrame(() => {
-        const sourceEl = sourceRef.current
-        const targetEl = targetRef.current
-        if (!sourceEl || !targetEl) {
-          rafId = null
-          return
-        }
-        
-        const sourceScrollHeight = sourceEl.scrollHeight - sourceEl.clientHeight
-        if (sourceScrollHeight <= 0) {
-          rafId = null
-          return
-        }
-        
-        const ratio = sourceEl.scrollTop / sourceScrollHeight
-        const targetScrollHeight = targetEl.scrollHeight - targetEl.clientHeight
+      if (rafIdRef.current) return
+      rafIdRef.current = requestAnimationFrame(() => {
+        const s = sourceRef.current
+        const t = targetRef.current
+        if (!s || !t) { rafIdRef.current = null; return }
+        const sourceScrollHeight = s.scrollHeight - s.clientHeight
+        if (sourceScrollHeight <= 0) { rafIdRef.current = null; return }
+        const ratio = s.scrollTop / sourceScrollHeight
+        const targetScrollHeight = t.scrollHeight - t.clientHeight
         if (targetScrollHeight > 0) {
-          targetEl.scrollTop = ratio * targetScrollHeight
+          t.scrollTop = ratio * targetScrollHeight
         }
-        rafId = null
+        rafIdRef.current = null
       })
     }
 
     source.addEventListener('scroll', listener, { passive: true })
+
     return () => {
-      if (sourceRef.current) {
-        sourceRef.current.removeEventListener('scroll', listener)
-      }
-      if (rafId) cancelAnimationFrame(rafId)
+      source.removeEventListener('scroll', listener)
+      if (rafIdRef.current) cancelAnimationFrame(rafIdRef.current)
     }
   }, [sourceRef, targetRef])
 }
-
-export default useScrollSync

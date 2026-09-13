@@ -1,4 +1,5 @@
 import { EditorView } from '@codemirror/view'
+import type { ImageUploadConfig } from '../../types'
 
 /**
  * 在光标位置插入文本
@@ -26,32 +27,63 @@ export function insertAtLineStart(view: EditorView, text: string): void {
 }
 
 /**
- * 上传文件到服务器
+ * 上传图片
+ * @param file - 要上传的文件
+ * @param uploadConfig - 上传配置
  */
-async function uploadFileToServer(file: File): Promise<string | null> {
-  const formData = new FormData()
-  formData.append('file', file)
+export async function uploadFileToServer(
+  file: File,
+  uploadConfig: ImageUploadConfig
+): Promise<string | null> {
+  // 优先使用自定义上传函数
+  if (uploadConfig.onUploadImage) {
+    return uploadConfig.onUploadImage(file)
+  }
 
-  const response = await fetch('https://remons.cn:3008/content/uploadMarkdownImg', {
-    method: 'POST',
-    body: formData,
-  })
+  // 使用 uploadUrl 上传
+  if (uploadConfig.uploadUrl) {
+    const formData = new FormData()
+    formData.append('file', file)
 
-  if (!response.ok) return null
+    const response = await fetch(uploadConfig.uploadUrl, {
+      method: 'POST',
+      body: formData,
+    })
 
-  const result = await response.json()
+    if (!response.ok) return null
 
-  if (result.code === 200 && result.success && result.data?.path) {
-    return `https://remons.cn:3008${result.data.path}`
+    const result = await response.json()
+    
+    // 如果外部提供了 URL 提取回调，使用它
+    if (uploadConfig.onGetUploadUrl) {
+      return uploadConfig.onGetUploadUrl(result)
+    }
+    
+    // 默认行为
+    return result.data?.path || null
   }
 
   return null
 }
 
 /**
- * 图片上传：创建隐藏的 file input 触发选择，上传后插入 markdown 图片语法
+ * 判断是否配置了图片上传
  */
-export function uploadImage(view: EditorView): void {
+export function isUploadConfigured(
+  uploadConfig?: ImageUploadConfig
+): boolean {
+  return !!(uploadConfig?.uploadUrl || uploadConfig?.onUploadImage)
+}
+
+/**
+ * 图片上传：创建隐藏的 file input 触发选择，上传后插入 markdown 图片语法
+ * @param view - CodeMirror 编辑器实例
+ * @param uploadConfig - 上传配置（包含 uploadUrl 或 onUploadImage）
+ */
+export function uploadImage(
+  view: EditorView,
+  uploadConfig: ImageUploadConfig
+): void {
   const input = document.createElement('input')
   input.type = 'file'
   input.accept = 'image/*'
@@ -64,7 +96,7 @@ export function uploadImage(view: EditorView): void {
     const { from, to } = view.state.selection.main
     const selectedText = view.state.doc.sliceString(from, to) || '描述'
 
-    const url = await uploadFileToServer(file)
+    const url = await uploadFileToServer(file, uploadConfig)
     if (url) {
       const insert = `![${selectedText}](${url})`
       view.dispatch({ changes: { from, to, insert } })

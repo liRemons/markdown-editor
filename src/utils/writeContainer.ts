@@ -45,26 +45,3 @@ export function insertContainer(
   const container = `:::${typeName}\n${propsLine}\n:::\n`
   view.dispatch({ changes: { from, insert: container } })
 }
-
-/**
- * 在光标位置插入默认的 linkCard 容器。
- */
-export function insertLinkCard(view: EditorView): void {
-  insertContainer(view, 'linkCard', {
-    title: '链接标题',
-    link: 'https://example.com',
-    description: '链接描述',
-    theme: 'default',
-  })
-}
-
-/**
- * 在光标位置插入默认的 note 容器。
- */
-export function insertNote(view: EditorView): void {
-  insertContainer(view, 'note', {
-    type: 'info',
-    title: '注意',
-    content: '备注内容',
-  })
-}

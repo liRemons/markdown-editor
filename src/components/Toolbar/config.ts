@@ -1,4 +1,4 @@
-import type { ToolbarButtonConfig } from '../../types'
+import type { ToolbarButtonConfig, ImageUploadConfig } from '../../types'
 import {
   BoldOutlined,
   ItalicOutlined,
@@ -15,9 +15,15 @@ import {
   FontSizeOutlined,
   TagsOutlined,
 } from '@ant-design/icons'
-import { insertAtCursor, insertAtLineStart, wrapSelection, toggleWrap, uploadImage } from './buttons'
+import { insertAtCursor, insertAtLineStart, wrapSelection, toggleWrap, uploadImage, isUploadConfigured } from './buttons'
 
-export function createToolbarConfig(): ToolbarButtonConfig[] {
+/**
+ * 创建工具栏配置
+ * @param options - 配置选项
+ */
+export function createToolbarConfig(options?: ImageUploadConfig): ToolbarButtonConfig[] {
+  // 判断是否配置了图片上传
+  const hasUploadConfig = isUploadConfigured(options)
   return [
     {
       id: 'heading',
@@ -42,7 +48,14 @@ export function createToolbarConfig(): ToolbarButtonConfig[] {
     { id: 'ol', label: '有序列表', icon: OrderedListOutlined, handler: (v) => insertAtLineStart(v, '1. ') },
     { separatorBefore: true },
     { id: 'link', label: '链接', icon: LinkOutlined, handler: (v) => insertAtCursor(v, '[', '](url)', '文本') },
-    { id: 'image', label: '图片', icon: PictureOutlined, handler: (v) => uploadImage(v) },
+    // 图片按钮：未配置上传时禁用并提示
+    {
+      id: 'image',
+      label: hasUploadConfig ? '图片' : '请配置图片上传地址',
+      icon: PictureOutlined,
+      disabled: !hasUploadConfig,
+      handler: hasUploadConfig ? (v) => uploadImage(v, { uploadUrl: options?.uploadUrl, onUploadImage: options?.onUploadImage }) : undefined,
+    },
     { separatorBefore: true },
     { id: 'code', label: '行内代码', icon: FieldStringOutlined, handler: (v) => wrapSelection(v, '`', '`') },
     {
@@ -57,7 +70,6 @@ export function createToolbarConfig(): ToolbarButtonConfig[] {
       },
     },
     { id: 'quote', label: '引用', icon: BlockOutlined, handler: (v) => insertAtLineStart(v, '> ') },
-    { id: 'textContainer', label: '文字容器', icon: TagsOutlined, handler: (v) => toggleWrap(v, '<text-container>', '</text-container>') },
     {
       id: 'hr',
       label: '分割线',

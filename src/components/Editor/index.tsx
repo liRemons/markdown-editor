@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { EditorView, basicSetup } from 'codemirror'
 import { EditorState } from '@codemirror/state'
 import { getCodeMirrorExtensions } from './codemirrorExtensions'
+import type { ImageUploadConfig } from '../../types'
 
 interface EditorProps {
   value: string
@@ -10,9 +11,13 @@ interface EditorProps {
   onViewReady?: (view: EditorView) => void
   /** 编辑容器属性的回调 */
   onEditContainer?: (view: any, typeName: string, propsLineFrom: number, propsLineTo: number, currentProps: Record<string, string>) => void
+  /** 图片上传配置 */
+  uploadConfig?: ImageUploadConfig
+  /** 未配置上传时的提示回调 */
+  onMessageNoUploadConfig?: () => void
 }
 
-export default function Editor({ value, onChange, onScrollReady, onViewReady, onEditContainer }: EditorProps) {
+export default function Editor({ value, onChange, onScrollReady, onViewReady, onEditContainer, uploadConfig, onMessageNoUploadConfig }: EditorProps) {
   const editorRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
 
@@ -21,7 +26,7 @@ export default function Editor({ value, onChange, onScrollReady, onViewReady, on
 
     const extensions = [
       basicSetup,
-      ...getCodeMirrorExtensions({ onEditContainer }),
+      ...getCodeMirrorExtensions({ onEditContainer, uploadConfig, onMessageNoUploadConfig }),
       EditorView.updateListener.of((update) => {
         if (update.docChanged) {
           onChange(update.state.doc.toString())

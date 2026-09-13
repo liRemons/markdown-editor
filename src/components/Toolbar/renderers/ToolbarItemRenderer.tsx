@@ -1,4 +1,4 @@
-import { Button, Dropdown } from 'antd'
+import { Button, Dropdown, Tooltip } from 'antd'
 import { DownOutlined } from '@ant-design/icons'
 import type { ToolbarButtonConfig } from '../../../types'
 
@@ -16,6 +16,7 @@ export function ToolbarItemRenderer({ item, onClick }: Props) {
       <>
         {item.separatorBefore && <div className="toolbar-separator" />}
         <div className="toolbar-group">
+          <Tooltip title={item.label}>
           <Dropdown
             menu={{
               items: item.children.map(child => ({
@@ -31,31 +32,35 @@ export function ToolbarItemRenderer({ item, onClick }: Props) {
             }}
             placement="bottomLeft"
           >
-            <Button className="toolbar-button" type="text" size="small" title={item.label}>
+            <Button className="toolbar-button" type="text" size="small">
               <Icon />
               <DownOutlined style={{ marginLeft: 2, fontSize: 10 }} />
             </Button>
           </Dropdown>
+        </Tooltip>
         </div>
       </>
     )
   }
 
   // 普通按钮
+  const isDisabled = item.disabled
   return (
     <>
       {item.separatorBefore && <div className="toolbar-separator" />}
       <div className="toolbar-group">
-        <Button
-          id={item.id}
-          className="toolbar-button"
-          type="text"
-          size="small"
-          title={item.label}
-          onClick={() => onClick(item)}
-        >
-          <Icon />
-        </Button>
+        <Tooltip title={item.label}>
+          <Button
+            id={item.id}
+            className="toolbar-button"
+            type="text"
+            size="small"
+            disabled={isDisabled}
+            onClick={() => !isDisabled && onClick(item)}
+          >
+            <Icon />
+          </Button>
+        </Tooltip>
       </div>
     </>
   )

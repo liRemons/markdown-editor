@@ -18,3 +18,118 @@ body {
   width: 100vw;
   overflow: hidden;
 }
+
+/* ===== CSS 自定义属性（主题变量） ===== */
+/* 浅色主题（默认） */
+:root,
+[data-theme="light"] {
+  /* ── 基础颜色 ── */
+  --color-bg: linear-gradient(137deg, rgb(229, 244, 255) 0%, rgb(239, 231, 255) 100%);
+  --color-animation-bg: url(../img/811e589a2221e49ba274b9b2e59ca05c.webp) no-repeat center/cover;
+  --color-bg-card: rgba(255, 255, 255, 0.15);
+  --color-bg-white: rgba(255, 255, 255, 0.6);
+  --color-bg-overlay: rgba(255, 255, 255, 0.1);
+  --color-bg-input: rgba(255, 255, 255, 0.95);
+  --color-bg-tooltip: #61616141;
+
+  /* ── 文字颜色 ── */
+  --color-text: #61677c;
+  --color-text-primary: #202124;
+  --color-text-secondary: #595959;
+  --color-text-muted: #9ba3b5;
+  --color-text-heading: #1d1d1d;
+  --color-text-light: #6b7280;
+  --color-text-placeholder: #999;
+
+  /* ── 阴影（毛玻璃柔和阴影） ── */
+  --color-shadow: rgba(0, 0, 0, 0.08);
+  --color-shadow-light: rgba(255, 255, 255, 0.6);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.1);
+  --shadow-inset: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-inset-deep: 0 2px 4px rgba(0, 0, 0, 0.06);
+  --shadow-pressed: 0 1px 3px rgba(0, 0, 0, 0.08);
+
+  /* ── 功能色 ── */
+  --color-active: #75bcff;
+  --color-red: #ae1100;
+  --color-primary: #1677ff;
+  --color-danger: #ef4444;
+  --color-success: #52c41a;
+  --color-warning: #faad14;
+
+  /* ── 边框（毛玻璃） ── */
+  --color-border: rgba(255, 255, 255, 0.8);
+  --color-border-light: rgba(255, 255, 255, 0.3);
+  --color-border-dark: rgba(0, 0, 0, 0.08);
+
+  /* ── 间距 ── */
+  --ruler: 16px;
+
+  /* ── 字体 ── */
+  --font-family-base: Inter, Noto Sans SC, -apple-system, BlinkMacSystemFont, Segoe UI, PingFang SC, Microsoft YaHei, sans-serif;
+  --font-family-mono: source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;
+  --font-family-editor: SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+
+  /* ── 圆角 ── */
+  --radius-sm: 3px;
+  --radius-base: 8px;
+  --radius-lg: 10px;
+  --radius-round: 50%;
+}
+
+/* ===== 深色主题 ===== */
+[data-theme="dark"] {
+  --color-bg: linear-gradient(137deg, #1a1d2e 0%, #252a40 100%);
+  --color-animation-bg: url(../img/f253f68decd90ce426f88fe5145ec848.webp) no-repeat center/cover;
+  --color-bg-card: rgba(30, 34, 53, 0.7);
+  --color-bg-white: rgba(46, 51, 80, 0.8);
+  --color-bg-overlay: rgba(30, 34, 53, 0.85);
+  --color-bg-input: rgba(46, 51, 80, 0.95);
+  --color-bg-tooltip: #2e3350;
+
+  --color-text: #b0b8c8;
+  --color-text-primary: #e8ecf4;
+  --color-text-secondary: #8892a4;
+  --color-text-muted: #6b7280;
+  --color-text-heading: #e8ecf4;
+  --color-text-light: #8892a4;
+  --color-text-placeholder: #6b7280;
+
+  --color-shadow: rgba(0, 0, 0, 0.3);
+  --color-shadow-light: rgba(255, 255, 255, 0.05);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.25);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.3);
+  --shadow-inset: 0 1px 2px rgba(0, 0, 0, 0.15);
+  --shadow-inset-deep: 0 2px 4px rgba(0, 0, 0, 0.2);
+  --shadow-pressed: 0 1px 3px rgba(0, 0, 0, 0.25);
+
+  --color-active: #4f9eff;
+  --color-red: #ef4444;
+  --color-primary: #4f9eff;
+  --color-danger: #ef4444;
+  --color-success: #52c41a;
+  --color-warning: #faad14;
+
+  --color-border: rgba(255, 255, 255, 0.1);
+  --color-border-light: rgba(255, 255, 255, 0.05);
+  --color-border-dark: rgba(255, 255, 255, 0.15);
+
+  --ruler: 16px;
+
+  --font-family-base: Inter, Noto Sans SC, -apple-system, BlinkMacSystemFont, Segoe UI, PingFang SC, Microsoft YaHei, sans-serif,
+    "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-family-mono: source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;
+  --font-family-editor: SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+
+  --radius-sm: 3px;
+  --radius-base: 8px;
+  --radius-lg: 10px;
+  --radius-round: 50%;
+}
+
+.ant-anchor-link-title {
+  white-space: inherit !important;
+}

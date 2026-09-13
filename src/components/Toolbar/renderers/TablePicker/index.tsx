@@ -10,31 +10,36 @@ interface TablePickerProps {
   onSelect: (size: TableSize) => void
 }
 
-const MAX_ROW = 12
-const MAX_COL = 12
+const MAX_ROW = 8
+const MAX_COL = 8
 const REFRESH_TIME = 200
 
 export default function TablePicker({ onSelect }: TablePickerProps) {
   const [hoverSize, setHoverSize] = useState({ row: 0, col: 0 })
-  const [prevHoverSize, setPrevHoverSize] = useState({ row: 0, col: 0 })
   const [confirmedSize, setConfirmedSize] = useState({ row: 0, col: 0 })
   const maxColRef = useRef(0)
+  const prevRowRef = useRef(0)
   const timerIdRef = useRef<any>(null)
   const refreshTimerRef = useRef<any>(null)
   const commitRef = useRef<{ cols: number; rows: number } | null>(null)
 
-  const clearTimer = useCallback((flushFn?: () => void) => {
+  const clearTimer = useCallback(() => {
     if (timerIdRef.current) {
+      clearTimeout(timerIdRef.current)
       timerIdRef.current = null
     }
-    if (flushFn && maxColRef.current > 0) {
-      timerIdRef.current = setTimeout(flushFn, REFRESH_TIME)
+  }, [])
+
+  const clearFlash = useCallback(() => {
+    if (refreshTimerRef.current) {
+      clearInterval(refreshTimerRef.current)
+      refreshTimerRef.current = null
     }
   }, [])
 
   useEffect(
     () => () => {
-      // Cleanup on unmount
+      // 组件卸载时清理定时器
       if (timerIdRef.current) clearTimeout(timerIdRef.current)
       if (refreshTimerRef.current) clearInterval(refreshTimerRef.current)
     },
@@ -42,27 +47,26 @@ export default function TablePicker({ onSelect }: TablePickerProps) {
   )
 
   /**
-   * Extend selection to (col, row)
+   * 扩展选中区域至 (col, row)
    */
   function extend(col: number, row: number) {
+    if (row < prevRowRef.current || col < maxColRef.current) {
+      // 鼠标回撤（向上或向左），重置列跟踪
+      maxColRef.current = 0
+    }
     if (col > maxColRef.current) {
       maxColRef.current = col
-      setHoverSize({ row, col })
-      setConfirmedSize({ row, col })
-    } else {
-      setHoverSize({ row, col })
-      if (row !== confirmedSize.row) {
-        setConfirmedSize({ row, col: maxColRef.current })
-      }
-      if (row === 1) {
-        commitRef.current = { cols: col, rows: 1 }
-        setConfirmedSize({ row: 1, col })
-      }
+    }
+    setHoverSize({ row, col })
+    setConfirmedSize({ row, col: maxColRef.current })
+
+    if (row === 1) {
+      commitRef.current = { cols: maxColRef.current, rows: 1 }
     }
   }
 
   /**
-   * Flash animation for jumps
+   * 跳跃动画效果
    */
   function flash(
     col: number,
@@ -72,7 +76,6 @@ export default function TablePicker({ onSelect }: TablePickerProps) {
   ) {
     let current = dir === 1 ? 1 : limit
     const step = dir === 1 ? 1 : -1
-    let timer = 0
 
     refreshTimerRef.current = setInterval(() => {
       setHoverSize({ row: current, col })
@@ -82,56 +85,52 @@ export default function TablePicker({ onSelect }: TablePickerProps) {
       current += step
       if ((dir === 1 && current > limit) || (dir === -1 && current < 1)) {
         clearInterval(refreshTimerRef.current)
-        setHoverSize({ row: current - step, col })
-        finalCallback(col, current - step)
+        refreshTimerRef.current = null
+        const finalRow = current - step
+        setHoverSize({ row: finalRow, col })
+        finalCallback(col, finalRow)
       }
     }, 50)
-
-    clearTimeout(timer)
-    return () => {
-      clearInterval(refreshTimerRef.current)
-    }
   }
 
   /**
-   * Core logic: mouse enters a cell at index in the grid
+   * 核心逻辑：鼠标进入格子
    */
   function onCellEnterCheck(index: number) {
     clearTimer()
+    clearFlash()
     const row = Math.floor(index / MAX_COL) + 1
     const col = (index % MAX_COL) + 1
 
-    const isDown = row > hoverSize.row
+    const prevRow = prevRowRef.current
+    const isJump = Math.abs(row - prevRow) > 1
+    const isDown = row > prevRow
+    prevRowRef.current = row
 
-    if (Math.abs(row - hoverSize.row) <= 1) {
-      // Normal hover - adjacent row
+    if (!isJump) {
+      // 正常悬停：相邻行或同一行
       extend(col, row)
-    } else {
-      // Jump - fast mouse movement
-      if (isDown && (col > maxColRef.current || maxColRef.current >= MAX_COL)) {
+    } else if (isDown) {
+      // 快速向下跳跃
+      if (col > maxColRef.current || maxColRef.current >= MAX_COL) {
         const finalRow = Math.min(row, MAX_ROW)
         flash(col, 1, finalRow, (c, r) => {
           setConfirmedSize({ row: r, col: c })
         })
-      } else if (!isDown) {
-        flash(col, -1, row, (c, r) => {
-          setConfirmedSize({ row: r, col: c })
-          if (r === 1) {
-            commitRef.current = { cols: Math.min(MAX_COL, col), rows: 1 }
-            setConfirmedSize({ row: 1, col: Math.min(MAX_COL, col) })
-          }
-        })
+      } else {
+        extend(col, row)
       }
+    } else {
+      // 快速向上跳跃：重置列跟踪并播放动画
+      maxColRef.current = 0
+      flash(col, -1, row, (c, r) => {
+        setConfirmedSize({ row: r, col: c })
+        if (r === 1) {
+          commitRef.current = { cols: Math.min(MAX_COL, col), rows: 1 }
+          setConfirmedSize({ row: 1, col: Math.min(MAX_COL, col) })
+        }
+      })
     }
-
-    // When column reaches max and current row exceeds previous, reset for next round
-    if (col >= MAX_COL && row >= prevHoverSize.row) {
-      if (row !== prevHoverSize.row) {
-        maxColRef.current = 0
-        setPrevHoverSize({ row: 0, col: 0 })
-      }
-    }
-    setPrevHoverSize({ row, col })
   }
 
   function onMouseDown() {

@@ -4,10 +4,15 @@ import type { ComponentSchema } from '../types'
 
 /**
  * 注册自定义容器组件到工具栏。支持单个或批量注册。
- * 支持 linkCard 形式的 schema（name + fields + renderDialog）。
- * fields 定义 Markdown 属性字段，renderDialog 定义弹窗内容。
+ * 支持两种模式：
  * 
- * @example 单个注册
+ * 1. 容器模式（linkCard）：name + fields + renderDialog
+ *    插入 :::name 格式的容器，支持弹窗编辑属性
+ * 
+ * 2. 标签包裹模式：name + wrapTags
+ *    插入简单的标签包裹文本，如 <plugin-container>...</plugin-container>
+ * 
+ * @example 容器模式
  * ```tsx
  * const schema: ComponentSchema = {
  *   name: 'alert',
@@ -21,6 +26,19 @@ import type { ComponentSchema } from '../types'
  * 
  * function MyPage() {
  *   useRegisterToolbar(schema)
+ *   return <MarkdownEditor />
+ * }
+ * ```
+ * 
+ * @example 标签包裹模式
+ * ```tsx
+ * function MyPage() {
+ *   useRegisterToolbar({
+ *     name: 'plugin-container',
+ *     label: '自定义容器',
+ *     icon: <AlertOutlined />,
+ *     wrapTags: ['<plugin-container>', '</plugin-container>'],
+ *   })
  *   return <MarkdownEditor />
  * }
  * ```
