@@ -7,6 +7,7 @@ import EditDialog from './components/Dialog/EditDialog'
 import componentRegistry from './registry/componentRegistry'
 import { updateContainerProps, insertContainer } from './utils/writeContainer'
 import type { ToolbarButtonConfig } from './types'
+import type { PreviewOptions } from './components/Preview'
 import { ReadOutlined } from '@ant-design/icons'
 import './App.css'
 
@@ -25,6 +26,8 @@ export interface MarkdownEditorProps {
   showPreview?: boolean
   /** 是否支持全屏 */
   fullscreen?: boolean
+  /** Preview 渲染配置 */
+  previewOptions?: PreviewOptions
 }
 
 export default forwardRef<MarkdownEditorRef, MarkdownEditorProps>(function MarkdownEditor({
@@ -33,6 +36,7 @@ export default forwardRef<MarkdownEditorRef, MarkdownEditorProps>(function Markd
   onChange,
   showPreview = true,
   fullscreen: fullscreenProp = false,
+  previewOptions,
 }, ref) {
   const [content, setContent] = useState(value ?? defaultValue)
   const [editorView, setEditorView] = useState<any>(null)
@@ -201,6 +205,7 @@ export default forwardRef<MarkdownEditorRef, MarkdownEditorProps>(function Markd
             <Preview
               content={content}
               ref={handlePreviewRef}
+              previewOptions={previewOptions}
             />
           }
         />

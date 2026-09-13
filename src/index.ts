@@ -11,3 +11,4 @@ export type {
   DialogField,
   ToolbarButtonConfig,
 } from './types'
+export type { PreviewOptions } from './components/Preview'

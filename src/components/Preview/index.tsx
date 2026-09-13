@@ -1,19 +1,29 @@
-import { forwardRef } from 'react'
-import { registerAll, excludedSelectors } from 'remons-markdown-plugins';
+import { forwardRef, useEffect } from 'react'
 import RenderMarkdown, { languagesCommon, initHighlighter } from 'remons-render-markdown';
-import 'remons-markdown-plugins/style.css';
+import type { RenderMarkdownProps } from 'remons-render-markdown';
 import 'remons-render-markdown/dist/index.css';
 
-initHighlighter(languagesCommon)
-
-interface PreviewProps {
-  content: string
+export type PreviewOptions = Omit<RenderMarkdownProps, 'content'> & {
+  languages?: Record<string, any> | null | undefined
 }
 
-const Preview = forwardRef<HTMLDivElement, PreviewProps>(({ content }, ref) => {
+export interface PreviewProps {
+  content: string
+  previewOptions?: PreviewOptions
+}
+
+
+const Preview = forwardRef<HTMLDivElement, PreviewProps>(({ content, previewOptions }, ref) => {
+  useEffect(() => {
+    initHighlighter({
+      ...languagesCommon,
+      ...(previewOptions?.languages ? previewOptions?.languages : {})
+    })
+  }, [previewOptions?.languages])
+
   return (
     <div ref={ref} className="preview">
-      <RenderMarkdown content={content} isSlotMermaid excludedSelectors={excludedSelectors} customRenderers={[(md) => md.use(registerAll)]} />
+      <RenderMarkdown content={content} {...previewOptions} />
     </div>
   )
 })
