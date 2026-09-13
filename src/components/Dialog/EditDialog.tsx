@@ -30,7 +30,7 @@ export default function EditDialog({ visible, typeName, currentProps, onSave, on
   const mergedProps = useMemo(() => {
     if (!schema) return currentProps
     const defaults: Record<string, string> = {}
-    for (const field of schema.fields) {
+    for (const field of schema.fields || []) {
       defaults[field.key] = field.defaultValue ?? ''
     }
     return { ...defaults, ...currentProps }
@@ -51,7 +51,7 @@ export default function EditDialog({ visible, typeName, currentProps, onSave, on
     onClose()
   }
 
-  if (!schema) {
+  if (!schema || !schema.renderDialog) {
     return null
   }
 

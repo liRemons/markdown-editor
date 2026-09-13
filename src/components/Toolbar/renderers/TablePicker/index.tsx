@@ -12,7 +12,6 @@ interface TablePickerProps {
 
 const MAX_ROW = 8
 const MAX_COL = 8
-const REFRESH_TIME = 200
 
 export default function TablePicker({ onSelect }: TablePickerProps) {
   const [hoverSize, setHoverSize] = useState({ row: 0, col: 0 })

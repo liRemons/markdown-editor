@@ -1,6 +1,6 @@
 {
   "name": "remons-markdown-editor",
-  "version": "1.0.0-beta.3",
+  "version": "1.0.0-beta.5",
   "type": "module",
   "description": "一个可复用的 React Markdown 编辑器组件，支持工具栏、预览和自定义容器",
   "main": "dist/index.cjs",
@@ -9,9 +9,9 @@
   "style": "dist/index.css",
   "repository": {
     "type": "git",
-    "url": "https://github.com/remons/markdown-editor"
+    "url": "https://github.com/liRemons/markdown-editor"
   },
-  "homepage": "https://github.com/remons/markdown-editor#readme",
+  "homepage": "https://github.com/liRemons/markdown-editor#readme",
   "sideEffects": [
     "*.css"
   ],
@@ -34,7 +34,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "build:lib": "tsup",
+    "build:lib": "vite build --mode lib",
     "lint": "oxlint",
     "preview": "vite preview"
   },
@@ -59,7 +59,6 @@
     "antd": "^6.6.3",
     "codemirror": "^6.0.1",
     "highlight.js": "^11.12.0",
-    "less": "^4.9.1",
     "markdown-it": "^14.1.0",
     "react": "^18.0.0 || ^19.0.0",
     "react-dom": "^18.0.0 || ^19.0.0",
@@ -72,10 +71,11 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
     "@vitejs/plugin-react": "^6.1.0",
+    "less": "^4.9.1",
     "oxlint": "^1.79.0",
-    "tsup": "^8.5.1",
     "typescript": "~6.0.2",
-    "vite": "^8.2.2"
+    "vite": "^8.2.2",
+    "vite-plugin-dts": "^5.1.0"
   },
   "license": "MIT"
 }

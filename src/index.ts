@@ -13,3 +13,7 @@ export type {
   ImageUploadConfig,
 } from './types'
 export type { PreviewOptions } from './components/Preview'
+
+// 全局样式
+import './index.css';
+import './styles/index.less';

@@ -13,9 +13,8 @@ import {
   MinusOutlined,
   FieldStringOutlined,
   FontSizeOutlined,
-  TagsOutlined,
 } from '@ant-design/icons'
-import { insertAtCursor, insertAtLineStart, wrapSelection, toggleWrap, uploadImage, isUploadConfigured } from './buttons'
+import { insertAtCursor, insertAtLineStart, wrapSelection, uploadImage, isUploadConfigured } from './buttons'
 
 /**
  * 创建工具栏配置
