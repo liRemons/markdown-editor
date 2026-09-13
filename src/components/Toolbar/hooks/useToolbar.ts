@@ -13,6 +13,7 @@ export interface UseToolbarOptions {
 
 export interface UseToolbarReturn {
   config: ToolbarButtonConfig[]
+  extraItemsConfig: ToolbarButtonConfig[]
   handleClick: (button: ToolbarButtonConfig) => void
 }
 
@@ -23,8 +24,12 @@ export function useToolbar(
   const { extraItems, uploadConfig } = options || {}
   const config = useMemo(() => {
     const base = createToolbarConfig(uploadConfig)
-    return extraItems ? [...base, ...extraItems] : base
-  }, [extraItems, uploadConfig])
+    return base
+  }, [uploadConfig])
+
+  const extraItemsConfig = useMemo(() => {
+    return extraItems || []
+  }, [extraItems])
 
   const handleClick = useCallback((button: ToolbarButtonConfig) => {
     if (!editorView) return
@@ -43,5 +48,5 @@ export function useToolbar(
     }
   }, [editorView])
 
-  return { config, handleClick }
+  return { config, extraItemsConfig, handleClick }
 }

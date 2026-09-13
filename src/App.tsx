@@ -99,7 +99,7 @@ function App() {
   }
 
   return (
-    <div className={fullscreen ? 'app fullscreen' : 'app'}>
+    <div className={fullscreen ? 'markdown-editor-app fullscreen' : 'markdown-editor-app'}>
       <Toolbar editorView={editorView} fullscreen={fullscreen} onToggleFullscreen={toggleFullscreen} extraItems={extraToolbarItems} uploadConfig={uploadConfig} />
       <SplitPanels
         leftPanel={

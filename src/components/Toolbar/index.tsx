@@ -18,7 +18,7 @@ interface ToolbarProps {
 }
 
 export default function Toolbar({ editorView, fullscreen = true, onToggleFullscreen, extraItems, uploadConfig }: ToolbarProps) {
-  const { config, handleClick } = useToolbar(editorView, { extraItems, uploadConfig })
+  const { config, extraItemsConfig, handleClick } = useToolbar(editorView, { extraItems, uploadConfig })
 
   const renderFullscreen = useCallback(() => {
     if (!onToggleFullscreen) return null
@@ -57,6 +57,18 @@ export default function Toolbar({ editorView, fullscreen = true, onToggleFullscr
         )
       })}
       <TableDropdown editorView={editorView} />
+      {extraItemsConfig?.map((item, idx) => {
+        if (isSeparator(item)) {
+          return <div key={`extra-sep-${idx}`} className="toolbar-separator" />
+        }
+        return (
+          <ToolbarItemRenderer
+            key={item.id}
+            item={item}
+            onClick={handleClick}
+          />
+        )
+      })}
       {renderFullscreen()}
     </div>
   )

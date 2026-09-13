@@ -123,7 +123,7 @@ export default forwardRef<MarkdownEditorRef, MarkdownEditorProps>(function Markd
   }, [])
 
   return (
-    <div className={fullscreen ? 'app fullscreen' : 'app'}>
+    <div className={fullscreen ? 'markdown-editor-app fullscreen' : 'markdown-editor-app'}>
       <Toolbar
         editorView={editorView}
         fullscreen={fullscreen}
