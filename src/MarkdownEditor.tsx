@@ -74,16 +74,25 @@ export default forwardRef<MarkdownEditorRef, MarkdownEditorProps>(function Markd
   }), [content])
 
   // 从注册中心自动生成工具栏按钮
-  const extraToolbarItems: ToolbarButtonConfig[] = componentRegistry.getAll().map(schema => {
+  const extraToolbarItems: ToolbarButtonConfig[] = componentRegistry.getAll().flatMap(schema => {
+    // 支持 wrapTags 的标签包裹模式
+    if (schema.wrapTags) {
+      return {
+        id: `wrap-${schema.name}`,
+        label: schema.label,
+        icon: () => (schema.icon ?? <ReadOutlined />),
+        wrapTags: schema.wrapTags,
+      }
+    }
+    // 容器插入模式
     const defaultProps: Record<string, string> = {}
     for (const field of schema?.fields ?? []) {
       defaultProps[field.key] = field.defaultValue ?? ''
     }
-    const iconNode = schema.icon ?? <ReadOutlined />
     return {
       id: `container-${schema.name}`,
       label: schema.label,
-      icon: () => iconNode,
+      icon: () => (schema.icon ?? <ReadOutlined />),
       handler: (view, _state) => insertContainer(view, schema.name, defaultProps),
     }
   })
