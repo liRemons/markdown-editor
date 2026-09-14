@@ -171,9 +171,54 @@ function App() {
 
 支持两种注册模式：
 
-#### 容器模式（支持弹窗编辑属性）
+#### 自动表单模式（推荐）
 
-插入 `:::name` 格式的容器，支持弹窗编辑属性：
+如果字段的 `componentType` 已配置，弹窗会自动生成对应表单，无需手动编写 `renderDialog`：
+
+```tsx
+import { MarkdownEditor, useRegisterToolbar } from 'remons-markdown-editor'
+import { AlertOutlined } from '@ant-design/icons'
+import 'remons-markdown-editor/style.css'
+
+const schema = {
+  name: 'alert',
+  label: '警告框',
+  icon: <AlertOutlined />,
+  fields: [
+    { key: 'type', name: '类型', componentType: 'select', defaultValue: 'info',
+      componentProps: { options: [
+        { label: '信息', value: 'info' },
+        { label: '成功', value: 'success' },
+        { label: '警告', value: 'warning' },
+        { label: '错误', value: 'error' },
+      ]} },
+    { key: 'content', name: '内容', componentType: 'textarea', defaultValue: '',
+      componentProps: { rows: 3 } },
+    { key: 'enabled', name: '启用', componentType: 'switch', defaultValue: true },
+  ],
+}
+
+export default function App() {
+  useRegisterToolbar(schema)
+  return <MarkdownEditor />
+}
+```
+
+支持的 componentType：
+- `input` - 文本输入框
+- `textarea` - 多行文本框
+- `number` - 数字输入框
+- `select` - 下拉选择（需配置 `componentProps.options`）
+- `switch` - 开关
+- `slider` - 滑块
+- `rate` - 评分
+- `color` - 颜色选择器
+- `date` - 日期选择
+- `dateRange` - 日期范围选择
+
+#### 容器模式（自定义渲染）
+
+插入 `:::name` 格式的容器，支持弹窗编辑属性。需要手动编写 `renderDialog` 自定义渲染弹窗内容：
 
 ```tsx
 import { MarkdownEditor, useRegisterToolbar } from 'remons-markdown-editor'
@@ -237,12 +282,28 @@ export default function App() {
 | name | string | 是 | 容器/组件名称 |
 | label | string | 是 | 工具栏按钮显示的标签 |
 | icon | ReactNode | 否 | 工具栏按钮显示的图标 |
-| fields | DialogField[] | 容器模式必填 | 弹窗属性字段配置 |
-| renderDialog | Function | 容器模式必填 | 弹窗内容渲染函数 |
+| fields | DialogField[] | 容器模式可选（自动表单模式需要 componentType） | 弹窗属性字段配置 |
+| renderDialog | Function | 容器模式可选（自动表单模式不需要） | 弹窗内容渲染函数 |
 | wrapTags | [string, string] | 标签模式必填 | 开闭标签对，如 `['<tag>', '</tag>']` |
 
 注：`wrapTags` 模式下不需要 `fields` 和 `renderDialog`。两种模式只需配置一种。
 
+如果 `fields` 中的字段配置了 `componentType`，则会自动生成表单，无需 `renderDialog`。
+
+### DialogField
+
+弹窗属性字段配置：
+
+| 属性名 | 类型 | 必填 | 说明 |
+|--------|------|------|------|
+| key | string | 是 | 字段唯一标识 |
+| name | string | 否 | 字段标签（默认使用 key） |
+| componentType | string | 否 | 组件类型，支持：`input`、`textarea`、`number`、`select`、`switch`、`slider`、`rate`、`color`、`date`、`dateRange` |
+| componentProps | object | 否 | 传递给组件的属性 |
+| defaultValue | any | 否 | 字段默认值 |
+
+当 `fields` 中的字段配置了 `componentType` 时，弹窗会自动生成对应表单，无需手动编写 `renderDialog`。
+
 ## 依赖
 
-此包需要 React 18 或 19 作为 peer dependency。
+此包需要 React 18 作为 peer dependency。

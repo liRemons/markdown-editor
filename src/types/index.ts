@@ -1,5 +1,6 @@
 import type { EditorView } from '@codemirror/view'
 import type { EditorState as CMEditorState } from '@codemirror/state'
+import type { FormInstance } from 'antd'
 import type React from 'react'
 
 // 工具栏按钮配置接口 — 单一递归类型，支持嵌套 children
@@ -22,14 +23,43 @@ export interface ToolbarButtonConfig {
 }
 
 /**
+ * 内置表单组件类型映射
+ * 用于 fields 驱动的自动表单渲染，无需手写 Form 结构
+ */
+export type FormComponentType =
+  | 'input'        // Input
+  | 'textarea'     // Input.TextArea
+  | 'number'       // InputNumber
+  | 'select'       // Select
+  | 'switch'       // Switch
+  | 'slider'       // Slider
+  | 'rate'         // Rate
+  | 'color'        // ColorPicker
+  | 'date'         // DatePicker (day)
+  | 'dateRange'    // DatePicker (range)
+
+/**
  * 弹窗属性配置
- * 用于定义 Markdown 容器中需要填充的属性字段
+ * 支持简单模式（key + defaultValue）和完整模式（带 componentType 自动渲染）
  */
 export interface DialogField {
   /** 字段键名，用于 Markdown 属性填充 */
   key: string
+  /** 字段显示名称（表单 label） */
+  name?: string
   /** 默认值 */
   defaultValue?: string
+  /**
+   * 表单组件类型（可选）
+   * 配置后 EditDialog 会自动渲染对应的 antd 表单组件，无需手写 Form 结构
+   * 如需完全自定义，可省略此项并提供 renderDialog
+   */
+  componentType?: FormComponentType
+  /**
+   * 组件额外属性（可选）
+   * 传递对应 antd 组件的 props
+   */
+  componentProps?: Record<string, any>
 }
 
 /**
@@ -53,12 +83,66 @@ export interface ComponentSchema {
   fields?: DialogField[]
   /**
    * 弹窗内容渲染函数（wrapTags 模式下可选）
-   * 接收当前属性值和回调函数，由用户完全自定义弹窗内容的渲染
-   * @param props 当前属性值，用于回显
-   * @param onChange 属性变更回调，用于更新表单值
-   * @returns 弹窗内容的 ReactNode
+   * 接收当前属性值、表单实例和回调函数，由用户完全自定义弹窗内容的渲染
+   *
+   * 如果省略 renderDialog 并为 fields 配置了 componentType，
+   * 弹窗会自动生成表单，无需手写 Form 结构。
+   * 支持的 componentType：'input' | 'textarea' | 'number' | 'select' | 'switch' | 'slider' | 'rate' | 'color' | 'date' | 'dateRange'
+   * 示例：
+   * ```tsx
+   * fields: [
+   *   { key: 'type', name: '类型', componentType: 'select',
+   *     componentProps: { options: [{ value: 'price', label: '价格' }, { value: 'info', label: '信息' }] } },
+   *   { key: 'content', name: '内容', componentType: 'textarea',
+   *     componentProps: { rows: 3 } },
+   *   { key: 'enabled', name: '启用', componentType: 'switch' },
+   * ],
+   * ```
+   *
+   * @example 使用 Form.Item 自动绑定（推荐）
+   * ```tsx
+   * renderDialog: ({ form }) => (
+   *   <Form form={form} layout="vertical">
+   *     <Form.Item name="type" label="类型">
+   *       <Input />
+   *     </Form.Item>
+   *   </Form>
+   * )
+   * ```
+   *
+   * @example 手动控制
+   * ```tsx
+   * renderDialog: ({ props, onChange }) => (
+   *   <Input value={props.content} onChange={e => onChange('content', e.target.value)} />
+   * )
+   * ```
+   *
+   * @example 完全自定义弹窗
+   * ```tsx
+   * renderDialog: ({ props, onSave }) => (
+   *   <MyCustomEditor value={props.content} onSave={({ content }) => onSave({ content })} />
+   * )
+   * ```
    */
-  renderDialog?: (props: Record<string, string>, onChange: (key: string, value: string) => void) => React.ReactNode
+  renderDialog?: (context: DialogRenderContext) => React.ReactNode
+}
+
+/**
+ * 弹窗渲染上下文
+ * 提供多种表单控制方式，用户可根据需求选择：
+ * - `form` + `Form.Item`：推荐方式，自动管理状态
+ * - `props` + `onChange`：手动控制，适用于自定义组件
+ * - `onSave`：完全自定义弹窗，直接调用保存
+ */
+export interface DialogRenderContext {
+  /** 当前属性值（合并默认值与当前的值） */
+  props: Record<string, string>
+  /** 表单实例，用于 Form.Item 自动绑定 */
+  form: FormInstance
+  /** 属性变更回调（手动控制方式） */
+  onChange: (key: string, value: string) => void
+  /** 直接保存属性（完全自定义方式，调用后弹窗不会自动关闭） */
+  onSave: (props: Record<string, string>) => void
 }
 
 /**

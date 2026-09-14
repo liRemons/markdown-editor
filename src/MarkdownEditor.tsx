@@ -39,7 +39,7 @@ export default forwardRef<MarkdownEditorRef, MarkdownEditorProps>(function Markd
   value,
   onChange,
   showPreview = true,
-  fullscreen: fullscreenProp = false,
+  fullscreen: fullscreenProp = true,
   previewOptions,
   uploadConfig,
 }, ref) {
