@@ -23,7 +23,7 @@ const Preview = forwardRef<HTMLDivElement, PreviewProps>(({ content, previewOpti
 
   return (
     <div ref={ref} className="preview">
-      <RenderMarkdown isSlotMermaid content={content} {...previewOptions} />
+      <RenderMarkdown content={content} {...previewOptions} />
     </div>
   )
 })
