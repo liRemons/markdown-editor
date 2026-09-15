@@ -179,10 +179,21 @@ export const containerWidgetPlugin = ViewPlugin.fromClass(
   {
     decorations: (value) => value.decorations,
     eventHandlers: {
+      // 阻止编辑按钮的 mousedown 事件，防止焦点移动
+      mousedown: (event: MouseEvent, view: any) => {
+        const target = event.target as HTMLElement
+        if (target.classList.contains('container-edit-btn')) {
+          event.preventDefault()
+          return true
+        }
+        return false
+      },
       // 点击编辑按钮时触发回调
       click: (event: MouseEvent, view: any) => {
         const target = event.target as HTMLElement
         if (target.classList.contains('container-edit-btn')) {
+          event.preventDefault()
+          event.stopPropagation()
           const typeName = (target as any).__typeName
           if (typeName) {
             const docText = view.state.doc.toString()
