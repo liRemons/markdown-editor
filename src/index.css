@@ -9,27 +9,78 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+:where(.css-dev-only-do-not-override-19u5a7b).ant-btn:not(:disabled):not(.ant-btn-disabled):hover {
+  border: none !important;
+  background-color: var(--remons-md-editor-bg-hover) !important;
+  color: var(--remons-md-editor-color-text-hover) !important;
+}
+
 #markdown-editor {
   height: 100vh;
   width: 100vw;
   overflow: hidden;
+  border-radius: 12px;
+  background: var(--remons-md-editor-bg-primary);
 }
 
 /* ===== CSS 自定义属性（主题变量） ===== */
 /* 浅色主题（默认） */
 :root,
 [data-theme="light"] {
-  --markdown-editor-color-bg-white: rgba(255, 255, 255, 0.6);
+  /* 背景色 */
+  --remons-md-editor-bg-primary: #f3f3f3;
+  --remons-md-editor-bg-white: rgba(255, 255, 255, 0.6);
+  --remons-md-editor-bg-hover: #e1e4e8;
+  --remons-md-editor-bg-active: #d0d7de;
+  --remons-md-editor-bg-fullscreen: #fff;
 
-  /* ── 边框（毛玻璃） ── */
-  --markdown-editor-color-border: rgba(255, 255, 255, 0.8);
+  /* 文字颜色 */
+  --remons-md-editor-color-text: #24292f;
+  --remons-md-editor-color-text-hover: #0969da;
+
+  /* 边框 */
+  --remons-md-editor-color-border: rgba(255, 255, 255, 0.8);
+  --remons-md-editor-color-border-light: #d0d7de;
+
+  /* 焦点 */
+  --remons-md-editor-color-focus: #0969da;
+  --remons-md-editor-color-focus-shadow: rgba(9, 105, 218, 0.1);
+
+  /* 工具选择器 */
+  --remons-md-editor-bg-picker: #fff;
+  --remons-md-editor-bg-cell-active: #ddf4ff;
+  --remons-md-editor-color-cell-active: #91caff;
+  --remons-md-editor-color-hint: #999;
+  --remons-md-editor-color-label: #666;
 }
 
 /* ===== 深色主题 ===== */
 [data-theme="dark"] {
-  --markdown-editor-color-bg-white: rgba(46, 51, 80, 0.8);
+  /* 背景色 */
+  --remons-md-editor-bg-primary: #1a1d23;
+  --remons-md-editor-bg-white: rgba(46, 51, 80, 0.8);
+  --remons-md-editor-bg-hover: #4a5163;
+  --remons-md-editor-bg-active: #5a6278;
+  --remons-md-editor-bg-fullscreen: #1a1d23;
 
-  --markdown-editor-color-border: rgba(255, 255, 255, 0.1);
+  /* 文字颜色 */
+  --remons-md-editor-color-text: #c9d1d9;
+  --remons-md-editor-color-text-hover: #58a6ff;
+
+  /* 边框 */
+  --remons-md-editor-color-border: rgba(255, 255, 255, 0.1);
+  --remons-md-editor-color-border-light: #3a3f4b;
+
+  /* 焦点 */
+  --remons-md-editor-color-focus: #58a6ff;
+  --remons-md-editor-color-focus-shadow: rgba(88, 166, 255, 0.15);
+
+  /* 工具选择器 */
+  --remons-md-editor-bg-picker: #2e3350;
+  --remons-md-editor-bg-cell-active: #1a3a5c;
+  --remons-md-editor-color-cell-active: #58a6ff;
+  --remons-md-editor-color-hint: #8b949e;
+  --remons-md-editor-color-label: #8b949e;
 }
 
 .ant-anchor-link-title {

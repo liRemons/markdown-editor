@@ -3,8 +3,8 @@
   display: flex;
   align-items: center;
   padding: 4px 8px;
-  background: var(--markdown-editor-color-bg-white);
-  border-bottom: 1px solid #d0d7de;
+  background: var(--remons-md-editor-bg-white);
+  border-bottom: 1px solid var(--remons-md-editor-color-border-light);
   gap: 4px;
   overflow-x: auto;
 }
@@ -28,7 +28,7 @@
   cursor: pointer;
   font-size: 16px;
   font-weight: 500;
-  color: #24292f;
+  color: var(--remons-md-editor-color-text);
   transition: background-color 0.15s, color 0.15s;
   white-space: nowrap;
 
@@ -38,12 +38,12 @@
   }
 
   &:hover {
-    background: #e1e4e8;
-    color: #0969da;
+    background: var(--remons-md-editor-bg-hover);
+    color: var(--remons-md-editor-color-text-hover);
   }
 
   &:active {
-    background: #d0d7de;
+    background: var(--remons-md-editor-bg-active);
   }
 
   &.ant-btn {
@@ -54,8 +54,8 @@
     box-shadow: none !important;
 
     &:hover {
-      background: #e1e4e8;
-      color: #0969da;
+      background: var(--remons-md-editor-bg-hover);
+      color: var(--remons-md-editor-color-text-hover);
       border-color: transparent !important;
       box-shadow: none !important;
     }
@@ -69,11 +69,13 @@
 
 :where(.css-dev-only-do-not-override-u6izyw).ant-btn:not(:disabled):not(.ant-btn-disabled):hover {
   border: none !important;
+  background-color: var(--remons-md-editor-bg-hover) !important;
+  color: var(--remons-md-editor-color-text-hover) !important;
 }
 
 .toolbar-separator {
   width: 1px;
   height: 24px;
-  background: #d0d7de;
+  background: var(--remons-md-editor-color-border-light);
   margin: 0 4px;
 }
