@@ -515,7 +515,6 @@ function MyPage() {
 |------|------|------|
 | `react` | ^18 / ^19 | peerDependency |
 | `codemirror` | ^6 | 代码编辑器内核 |
-| `markdown-it` | ^14 | Markdown 解析 |
 | `antd` | ^6 | UI 组件 |
 | `remons-markdown-plugins` | ^1.0 | Markdown 插件 |
 | `remons-render-markdown` | ^2.0 | Markdown 渲染 |

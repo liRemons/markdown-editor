@@ -17,6 +17,10 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins,
+    resolve: {
+      // npm link 的包会从自己项目的 node_modules 解析 react,导致出现两份 React,统一去重到工程根目录的副本
+      dedupe: ['react', 'react-dom'],
+    },
     build: isLib
       ? {
           lib: {
@@ -42,7 +46,6 @@ export default defineConfig(({ mode }) => {
               '@codemirror/theme-one-dark',
               '@lezer/common',
               '@lezer/highlight',
-              'markdown-it',
               'highlight.js',
               'remons-markdown-plugins',
               'remons-markdown-plugins/style.css',

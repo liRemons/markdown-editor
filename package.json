@@ -1,6 +1,6 @@
 {
   "name": "remons-markdown-editor",
-  "version": "1.0.0-beta.14",
+  "version": "1.0.0-beta.15",
   "type": "module",
   "description": "一个可复用的 React Markdown 编辑器组件，支持工具栏、预览和自定义容器",
   "main": "dist/index.cjs",
@@ -55,16 +55,14 @@
     "antd": "^6.6.3",
     "codemirror": "^6.0.1",
     "highlight.js": "^11.12.0",
-    "markdown-it": "^14.1.0",
-    "remons-markdown-plugins": "^1.0.0-beta.4",
-    "remons-render-markdown": "^1.0.28-beta.5"
+    "remons-markdown-plugins": "^1.0.0-beta.7",
+    "remons-render-markdown": "^1.0.28-beta.7"
   },
   "peerDependencies": {
     "react": "^18.0.0",
     "react-dom": "^18.0.0"
   },
   "devDependencies": {
-    "@types/markdown-it": "^14.1.2",
     "@types/node": "^24.13.3",
     "@types/react": "^18.0.0",
     "@types/react-dom": "^18.0.0",
