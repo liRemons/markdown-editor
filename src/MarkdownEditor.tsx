@@ -118,9 +118,8 @@ export default forwardRef<MarkdownEditorRef, MarkdownEditorProps>(function Markd
     setDialogVisible(true)
   }, [])
 
-  // 保存容器属性
+  // 保存容器属性（仅写回编辑器，不关闭弹窗；关闭由 EditDialog 内部控制）
   const handleDialogSave = useCallback((newProps: Record<string, string>) => {
-    setDialogVisible(false)
     if (editorView) {
       updateContainerProps(editorView, dialogPropsRange[0], dialogPropsRange[1], newProps)
     }

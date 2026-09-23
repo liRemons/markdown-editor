@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, type FC } from 'react'
+import { useState, useMemo, useEffect, useRef, type FC } from 'react'
 import { Modal, Form, Input, InputNumber, Select, Switch, Slider, Rate, DatePicker, ColorPicker } from 'antd'
 import type { FormInstance, FormItemProps } from 'antd'
 import componentRegistry from '../../registry/componentRegistry'
@@ -86,6 +86,10 @@ export default function EditDialog({ visible, typeName, currentProps, onSave, on
   const [formProps, setFormProps] = useState<Record<string, string>>({})
   const [form] = Form.useForm()
 
+  const onSaveRef = useRef(onSave)
+  onSaveRef.current = onSave
+  const dirtyRef = useRef(false)
+
   // 当弹窗打开时，初始化表单值
   const mergedProps = useMemo(() => {
     if (!schema) return currentProps
@@ -119,11 +123,14 @@ export default function EditDialog({ visible, typeName, currentProps, onSave, on
       // 用户没有使用 Form.Item，使用原有的逻辑
     }
 
-    onSave(finalProps)
+    onSaveRef.current(finalProps)
+    dirtyRef.current = false
+    onClose()
   }
 
   const handleClose = () => {
     setFormProps({})
+    dirtyRef.current = false
     onClose()
   }
 
@@ -132,11 +139,18 @@ export default function EditDialog({ visible, typeName, currentProps, onSave, on
   }
 
   // 构建 context 对象，供 renderDialog 使用
+  // context.onSave 为包装函数：仅写回编辑器并标记脏状态，不触发弹窗关闭；
+  // 弹窗关闭由 onOk / onCancel 最终统一处理
+  const contextSave = (props: Record<string, string>) => {
+    setFormProps(prev => ({ ...prev, ...props }))
+    dirtyRef.current = true
+  }
+
   const context = {
     props: mergedProps,
     form,
     onChange: handleDialogChange,
-    onSave,
+    onSave: contextSave,
   }
 
   // 渲染策略：
