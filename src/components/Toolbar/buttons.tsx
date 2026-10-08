@@ -27,6 +27,100 @@ export function insertAtLineStart(view: EditorView, text: string): void {
 }
 
 /**
+ * 切换标题：
+ * - 当前行已是目标级别标题 → 移除行首 # 前缀（变回普通文本）
+ * - 当前行是其他级别标题 → 替换为目标级别
+ * - 当前行是普通文本 → 插入目标级别前缀
+ * @param view - CodeMirror 编辑器实例
+ * @param level - 标题级别（1-6）
+ */
+export function toggleHeading(view: EditorView, level: number): void {
+  const line = view.state.doc.lineAt(view.state.selection.main.from)
+  const m = line.text.match(/^(\s*)(#{1,6})(\s+|\s*$)/)
+  const indent = m ? m[1] : ''
+  const text = '#'.repeat(level) + ' '
+  if (m && m[2].length === level) {
+    // 已是目标级别：移除 # 前缀，保留行首缩进
+    view.dispatch({ changes: { from: line.from, to: line.from + m[0].length, insert: indent } })
+  } else {
+    view.dispatch({ changes: { from: line.from, to: m ? line.from + m[0].length : line.from, insert: indent + text } })
+    view.dispatch({ selection: { anchor: line.from + indent.length + text.length } })
+  }
+}
+
+/**
+ * 切换任务列表（checkbox 待办）
+ * - 支持多行：对选区内每一行应用 `- [ ] `
+ * - 普通列表项（如 `- 内容`）直接转换为 `- [ ] 内容`
+ * - 切换：若所有目标行都已是任务项，则移除行首前缀
+ */
+export function toggleTaskList(view: EditorView): void {
+  const doc = view.state.doc
+  const { from, to } = view.state.selection.main
+  const first = doc.lineAt(from)
+  const last = doc.lineAt(to)
+
+  const lines: Array<ReturnType<typeof doc.line>> = []
+  for (let n = first.number; n <= last.number; n++) {
+    lines.push(doc.line(n))
+  }
+
+  const taskRe = /^(\s*)([-*+])\s\[( |x)\]\s?/
+  const allTask = lines.every((line) => taskRe.test(line.text))
+
+  const changes: Array<{ from: number; to: number; insert: string }> = []
+  for (const line of lines) {
+    const taskMatch = line.text.match(taskRe)
+    if (taskMatch) {
+      changes.push({
+        from: line.from,
+        to: line.from + taskMatch[0].length,
+        insert: allTask ? '' : `${taskMatch[1]}${taskMatch[2]} [ ] `,
+      })
+    } else {
+      const bulletMatch = line.text.match(/^(\s*)([-*+])\s/)
+      if (bulletMatch) {
+        // 普通列表项：把 bullet 后第一个空格替换为 " [ ] "
+        const idx = line.from + bulletMatch[1].length + bulletMatch[2].length
+        changes.push({ from: idx, to: idx + 1, insert: ' [ ] ' })
+      } else {
+        changes.push({ from: line.from, to: line.from, insert: '- [ ] ' })
+      }
+    }
+  }
+  view.dispatch({ changes })
+}
+
+/**
+ * 切换行首前缀（支持多行选区）
+ * - 已是对应前缀的行 → 移除前缀（变回普通文本）
+ * - 未加前缀的行 → 在行首插入前缀
+ * @param view - CodeMirror 编辑器实例
+ * @param pattern - 匹配行首前缀的正则
+ * @param insertText - 未匹配时插入的前缀文本
+ */
+export function toggleLinePrefix(view: EditorView, pattern: RegExp, insertText: string): void {
+  const doc = view.state.doc
+  const { from, to } = view.state.selection.main
+  const first = doc.lineAt(from)
+  const last = doc.lineAt(Math.max(to, from))
+
+  const changes: Array<{ from: number; to: number; insert: string }> = []
+  for (let n = first.number; n <= last.number; n++) {
+    const line = doc.line(n)
+    const m = line.text.match(pattern)
+    if (m) {
+      // 已有前缀：移除
+      changes.push({ from: line.from, to: line.from + m[0].length, insert: '' })
+    } else {
+      // 无前缀：行首插入
+      changes.push({ from: line.from, to: line.from, insert: insertText })
+    }
+  }
+  view.dispatch({ changes })
+}
+
+/**
  * 上传图片
  * @param file - 要上传的文件
  * @param uploadConfig - 上传配置

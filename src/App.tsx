@@ -17,7 +17,7 @@ function App() {
       }}
       previewOptions={{
         showToc: true,
-        useIncremental: true,
+        // useIncremental: true,
         customRenderers: [(md) => md.use(registerAll)],
       }}
     />
