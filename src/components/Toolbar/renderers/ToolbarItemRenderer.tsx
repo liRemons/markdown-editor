@@ -34,7 +34,7 @@ export function ToolbarItemRenderer({ item, onClick }: Props) {
           >
             <Button className="toolbar-button" type="text" size="small">
               <Icon />
-              <DownOutlined style={{ marginLeft: 2, fontSize: 10 }} />
+              <DownOutlined style={{ fontSize: 10 }} />
             </Button>
           </Dropdown>
         </Tooltip>

@@ -9,13 +9,20 @@ import {
   LinkOutlined,
   PictureOutlined,
   CodeOutlined,
-  BlockOutlined,
   MinusOutlined,
-  FieldStringOutlined,
   FontSizeOutlined,
   CheckSquareOutlined
-} from '@ant-design/icons'
+} from '@ant-design/icons';
+import IconComponent from '../Icon'
 import { insertAtCursor, insertAtLineStart, wrapSelection, uploadImage, isUploadConfigured, toggleTaskList, toggleHeading, toggleWrap, toggleLinePrefix } from './buttons'
+
+function Quote() {
+  return IconComponent('quote')
+}
+
+function InlineCode() {
+  return IconComponent('inlinecode')
+}
 
 /**
  * 创建工具栏配置
@@ -59,7 +66,7 @@ export function createToolbarConfig(options?: ImageUploadConfig): ToolbarButtonC
       handler: hasUploadConfig ? (v) => uploadImage(v, { uploadUrl: options?.uploadUrl, onUploadImage: options?.onUploadImage }) : undefined,
     },
     { separatorBefore: true },
-    { id: 'code', label: '行内代码', icon: FieldStringOutlined, handler: (v) => wrapSelection(v, '`', '`') },
+    { id: 'code', label: '行内代码', icon: InlineCode, handler: (v) => wrapSelection(v, '`', '`') },
     {
       id: 'codeblock',
       label: '代码块',
@@ -71,7 +78,7 @@ export function createToolbarConfig(options?: ImageUploadConfig): ToolbarButtonC
         v.dispatch({ changes: { from, to, insert } })
       },
     },
-    { id: 'quote', label: '引用', icon: BlockOutlined, handler: (v) => insertAtLineStart(v, '> ') },
+    { id: 'quote', label: '引用', icon: Quote, handler: (v) => insertAtLineStart(v, '> ') },
     {
       id: 'hr',
       label: '分割线',

@@ -6,7 +6,7 @@ import type React from 'react'
 // 工具栏按钮配置接口 — 单一递归类型，支持嵌套 children
 export interface ToolbarButtonConfig {
   id?: string
-  icon?: React.ComponentType
+  icon?: React.ComponentType | React.ReactNode
   label?: string
   // 支持嵌套子项（如 dropdown 菜单）
   children?: ToolbarButtonConfig[]
