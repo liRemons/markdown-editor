@@ -1,5 +1,6 @@
 import { Button, Dropdown, Tooltip } from 'antd'
 import { DownOutlined } from '@ant-design/icons'
+import type { ComponentType } from 'react'
 import type { ToolbarButtonConfig } from '../../../types'
 
 interface Props {
@@ -8,7 +9,7 @@ interface Props {
 }
 
 export function ToolbarItemRenderer({ item, onClick }: Props) {
-  const Icon = item.icon!
+  const Icon = item.icon as ComponentType
 
   // 有 children 的渲染为下拉菜单
   if (item.children && item.children.length > 0) {
@@ -24,7 +25,7 @@ export function ToolbarItemRenderer({ item, onClick }: Props) {
                 key: child.id ?? '',
                 label: (
                   <span onClick={() => onClick(child)}>
-                    {child.icon && (() => { const ChildIcon = child.icon; return <ChildIcon />; })()}
+                    {child.icon && (() => { const ChildIcon = child.icon as ComponentType; return <ChildIcon />; })()}
                     {' '}{child.label}
                   </span>
                 ),
