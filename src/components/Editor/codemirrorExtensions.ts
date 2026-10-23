@@ -5,7 +5,7 @@ import { oneDark } from '@codemirror/theme-one-dark'
 import { Facet } from '@codemirror/state'
 import { containerWidgetPlugin, containerEditCallback } from './containerWidget'
 import type { OnEditContainer } from './containerWidget'
-import { uploadFileToServer, isUploadConfigured } from '../Toolbar/buttons'
+import { uploadFileToServer, isUploadConfigured, indentMarkdownList, dedentMarkdownList } from '../Toolbar/buttons'
 import type { ImageUploadConfig } from '../../types'
 
 /** 图片上传配置 facet */
@@ -69,7 +69,13 @@ export const getCodeMirrorExtensions = (opts?: GetCodeMirrorExtensionsOptions) =
   const extensions = [
     markdown(),
     oneDark,
-    keymap.of([...defaultKeymap, indentWithTab]),
+    // Tab/Shift-Tab 优先接管列表行：缩进 4 空格并重排子列表序号
+    keymap.of([
+      { key: 'Tab', run: indentMarkdownList },
+      { key: 'Shift-Tab', run: dedentMarkdownList },
+      ...defaultKeymap,
+      indentWithTab,
+    ]),
     EditorView.lineWrapping,
     pasteHandler,
     EditorView.baseTheme({

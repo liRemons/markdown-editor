@@ -1,3 +1,4 @@
+import { message } from 'antd';
 import type { ToolbarButtonConfig, ImageUploadConfig } from '../../types'
 import {
   BoldOutlined,
@@ -23,6 +24,9 @@ function Quote() {
 function InlineCode() {
   return IconComponent('inlinecode')
 }
+
+/** 未配置图片上传时的提示文案 */
+const UPLOAD_CONFIG_MISSING_MESSAGE = '请先配置图片上传功能'
 
 /**
  * 创建工具栏配置
@@ -57,13 +61,14 @@ export function createToolbarConfig(options?: ImageUploadConfig): ToolbarButtonC
     { id: 'checkbox', label: '待办', icon: CheckSquareOutlined, handler: (v) => toggleTaskList(v) },
     { separatorBefore: true },
     { id: 'link', label: '链接', icon: LinkOutlined, handler: (v) => insertAtCursor(v, '[', '](url)', '文本') },
-    // 图片按钮：未配置上传时禁用并提示
+    // 图片按钮：未配置上传时点击提示（不置灰）
     {
       id: 'image',
-      label: hasUploadConfig ? '图片' : '请配置图片上传地址',
+      label: '图片',
       icon: PictureOutlined,
-      disabled: !hasUploadConfig,
-      handler: hasUploadConfig ? (v) => uploadImage(v, { uploadUrl: options?.uploadUrl, onUploadImage: options?.onUploadImage }) : undefined,
+      handler: hasUploadConfig && options
+        ? (v) => uploadImage(v, options)
+        : () => message.warning(UPLOAD_CONFIG_MISSING_MESSAGE),
     },
     { separatorBefore: true },
     { id: 'code', label: '行内代码', icon: InlineCode, handler: (v) => wrapSelection(v, '`', '`') },

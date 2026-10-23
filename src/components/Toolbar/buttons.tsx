@@ -1,4 +1,7 @@
 import { EditorView } from '@codemirror/view'
+import type { EditorState } from '@codemirror/state'
+import { syntaxTree } from '@codemirror/language'
+import type { SyntaxNode } from '@lezer/common'
 import type { ImageUploadConfig } from '../../types'
 
 /**
@@ -118,6 +121,146 @@ export function toggleLinePrefix(view: EditorView, pattern: RegExp, insertText: 
     }
   }
   view.dispatch({ changes })
+}
+
+/** Markdown 列表行：缩进 + 列表标记（无序/有序）+ 空白 */
+const LIST_LINE_RE = /^(\s*)([-*+]|\d+\.)([ \t]+)/
+/** 列表缩进台阶：4 个空格，确保缩进后能被解析为子列表 */
+const LIST_INDENT_WIDTH = 4
+
+interface ListLineInfo {
+  /** 当前缩进宽度 */
+  indent: number
+  /** 缩进调整后的宽度 */
+  nextIndent: number
+  /** 当前有序列表序号（无序列表为 null） */
+  order: number | null
+  /** 缩进调整后的序号 */
+  nextOrder: number | null
+}
+
+/** 判断位置是否位于代码块内（代码块内不参与列表缩进逻辑） */
+function isInCodeBlock(state: EditorState, pos: number): boolean {
+  let node: SyntaxNode | null = syntaxTree(state).resolveInner(pos, 1)
+  while (node) {
+    if (node.name === 'FencedCode' || node.name === 'CodeBlock') return true
+    node = node.parent
+  }
+  return false
+}
+
+/**
+ * 向上查找同缩进的前一个列表项，返回其序号
+ * - 跳过更深的子列表行和空行
+ * - 遇到非列表内容或更浅层列表时结束
+ */
+function findPrevSiblingOrder(
+  state: EditorState,
+  plans: Map<number, ListLineInfo>,
+  lineNo: number,
+  indent: number
+): number | null {
+  const doc = state.doc
+  for (let n = lineNo - 1; n >= 1; n--) {
+    const plan = plans.get(n)
+    if (plan) {
+      if (plan.nextIndent === indent) return plan.nextOrder
+      if (plan.nextIndent < indent) return null
+      continue
+    }
+
+    const text = doc.line(n).text
+    if (!text.trim()) continue
+    const m = text.match(LIST_LINE_RE)
+    if (!m) return null
+    const lineIndent = m[1].length
+    if (lineIndent === indent) {
+      return /^\d+\.$/.test(m[2]) ? parseInt(m[2], 10) : null
+    }
+    if (lineIndent < indent) return null
+  }
+  return null
+}
+
+/**
+ * 计算列表行缩进/反缩进的变更
+ * - 仅当所有选区行都是列表行时生效，否则返回 null 交给默认缩进行为
+ * - 有序列表缩进后重新编号，保证新一级子列表从 1 开始
+ */
+function planListIndent(
+  view: EditorView,
+  direction: 1 | -1
+): Array<{ from: number; to: number; insert: string }> | null {
+  const { state } = view
+  const doc = state.doc
+  const plans = new Map<number, ListLineInfo>()
+
+  for (const range of state.selection.ranges) {
+    const first = doc.lineAt(range.from).number
+    const last = doc.lineAt(range.to).number
+    for (let n = first; n <= last; n++) {
+      if (plans.has(n)) continue
+      const line = doc.line(n)
+      if (isInCodeBlock(state, line.from)) return null
+      const m = line.text.match(LIST_LINE_RE)
+      if (!m) return null
+      const indent = m[1].length
+      plans.set(n, {
+        indent,
+        nextIndent: direction === 1 ? indent + LIST_INDENT_WIDTH : Math.max(0, indent - LIST_INDENT_WIDTH),
+        order: /^\d+\.$/.test(m[2]) ? parseInt(m[2], 10) : null,
+        nextOrder: null,
+      })
+    }
+  }
+
+  if (plans.size === 0) return null
+
+  // 按行号升序计算缩进后的序号
+  const ordered = [...plans.entries()].sort((a, b) => a[0] - b[0])
+  for (const [lineNo, info] of ordered) {
+    if (info.order === null) continue
+    const prevOrder = findPrevSiblingOrder(state, plans, lineNo, info.nextIndent)
+    info.nextOrder = prevOrder === null ? 1 : prevOrder + 1
+  }
+
+  // 每行只替换行首前缀，避免多个变更位置重叠
+  return ordered.map(([lineNo, info]) => {
+    const line = doc.line(lineNo)
+    const m = line.text.match(LIST_LINE_RE)!
+    const indentChanged = direction === 1 || info.indent > 0
+    const useNextOrder =
+      indentChanged && info.order !== null && info.nextOrder !== null && info.order !== info.nextOrder
+    return {
+      from: line.from,
+      to: line.from + m[0].length,
+      insert: ' '.repeat(info.nextIndent) + (useNextOrder ? `${info.nextOrder}.` : m[2]) + m[3],
+    }
+  })
+}
+
+/**
+ * Tab：列表行缩进一级（4 空格）
+ * - 普通行返回 false，继续走默认缩进
+ * - 有序列表缩进后重排序号，子列表从 1 开始
+ */
+export function indentMarkdownList(view: EditorView): boolean {
+  const changes = planListIndent(view, 1)
+  if (!changes) return false
+  view.dispatch({ changes, userEvent: 'input.indent' })
+  return true
+}
+
+/**
+ * Shift-Tab：列表行反缩进一级
+ * - 普通行返回 false，继续走默认缩进
+ * - 有序列表反缩进后并入上一层并重排序号
+ */
+export function dedentMarkdownList(view: EditorView): boolean {
+  const changes = planListIndent(view, -1)
+  if (!changes) return false
+  view.dispatch({ changes, userEvent: 'delete.dedent' })
+  return true
 }
 
 /**

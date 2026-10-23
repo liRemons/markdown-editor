@@ -29,7 +29,7 @@ export default function App() {
 | defaultValue | string | '' | 非受控模式下的初始内容 |
 | onChange | (value: string) => void | - | 内容变更回调 |
 | showPreview | boolean | true | 是否显示预览面板 |
-| fullscreen | boolean | false | 是否显示全屏按钮 |
+| fullscreen | boolean | true | 是否显示全屏按钮 |
 | previewOptions | PreviewOptions | - | 预览渲染配置，类型继承自 `RenderMarkdownProps` |
 | uploadConfig | ImageUploadConfig | - | 图片上传配置 |
 
@@ -64,7 +64,6 @@ export type PreviewOptions = Omit<RenderMarkdownProps, 'content'> & {
 | mermaidDebounce | number | - | Mermaid 渲染防抖延迟（ms） |
 | cdn | Record<string, string> | - | 自定义 CDN 配置 |
 | chartConfig | (text: string) => string | - | 渲染前文本修改函数 |
-| languages | Record<string, any> | - | 自定义代码高亮语言配置 |
 
 更多配置请参考 [remons-render-markdown](https://github.com/liRemons/render-markdown)。
 
@@ -161,7 +160,7 @@ function App() {
 }
 ```
 
-`uploadUrl` 或 `onUploadImage` 至少需要配置一个，否则图片上传按钮将被禁用。
+`uploadUrl` 或 `onUploadImage` 至少需要配置一个；未配置时图片上传按钮仍可点击，点击后会提示先配置图片上传功能。
 
 - **uploadUrl**：配置后，编辑器会使用 `FormData` 格式发送 `POST` 请求，`file` 字段为图片文件。接口返回的 `data.path` 将作为图片地址。
 - **onUploadImage**：自定义上传函数，完全接管上传逻辑。接收 `File` 对象，返回 `Promise<string | null>`，返回的图片 URL 会直接插入到编辑器中。
@@ -229,7 +228,7 @@ const schema = {
   label: '警告框',
   icon: <AlertOutlined />,
   fields: [{ key: 'level', defaultValue: 'info' }],
-  renderDialog: (props, onChange) => (
+  renderDialog: ({ props, onChange }) => (
     <div>
       <input
         value={props.level}
