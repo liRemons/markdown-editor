@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { EditorView, basicSetup } from 'codemirror'
 import { EditorState } from '@codemirror/state'
 import { getCodeMirrorExtensions } from './codemirrorExtensions'
+import type { OnEditContainer } from './containerWidget'
 import type { ImageUploadConfig } from '../../types'
 
 interface EditorProps {
@@ -10,7 +11,7 @@ interface EditorProps {
   onScrollReady?: (scrollDOM: HTMLElement) => void
   onViewReady?: (view: EditorView) => void
   /** 编辑容器属性的回调 */
-  onEditContainer?: (view: any, typeName: string, propsLineFrom: number, propsLineTo: number, currentProps: Record<string, string>) => void
+  onEditContainer?: OnEditContainer
   /** 图片上传配置 */
   uploadConfig?: ImageUploadConfig
   /** 未配置上传时的提示回调 */
@@ -21,15 +22,23 @@ export default function Editor({ value, onChange, onScrollReady, onViewReady, on
   const editorRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
 
+  // 回调/配置经 ref 中转：扩展仅在 mount 时创建，getter 形式保证运行期始终读到最新引用
+  const latestRef = useRef({ onChange, onEditContainer, uploadConfig, onMessageNoUploadConfig })
+  latestRef.current = { onChange, onEditContainer, uploadConfig, onMessageNoUploadConfig }
+
   useEffect(() => {
     if (!editorRef.current) return
 
     const extensions = [
       basicSetup,
-      ...getCodeMirrorExtensions({ onEditContainer, uploadConfig, onMessageNoUploadConfig }),
+      ...getCodeMirrorExtensions({
+        getUploadConfig: () => latestRef.current.uploadConfig,
+        getOnMessageNoUploadConfig: () => latestRef.current.onMessageNoUploadConfig,
+        onEditContainer: (view, container) => latestRef.current.onEditContainer?.(view, container),
+      }),
       EditorView.updateListener.of((update) => {
         if (update.docChanged) {
-          onChange(update.state.doc.toString())
+          latestRef.current.onChange(update.state.doc.toString())
         }
       }),
     ]
@@ -44,24 +53,27 @@ export default function Editor({ value, onChange, onScrollReady, onViewReady, on
       parent: editorRef.current,
     })
 
-    if (onScrollReady && viewRef.current) {
-      onScrollReady(viewRef.current.scrollDOM)
-    }
-
-    if (onViewReady) {
-      onViewReady(viewRef.current)
+    if (viewRef.current) {
+      onScrollReady?.(viewRef.current.scrollDOM)
+      onViewReady?.(viewRef.current)
     }
 
     return () => {
       viewRef.current?.destroy()
+      viewRef.current = null
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // 外部 value 变化时更新编辑器内容
+  // 外部 value 变化时更新编辑器内容：scrollSnapshot 保持滚动视口，避免整篇替换后跳顶
+  // （新版 @codemirror/view 的 dispatch 为变长 TransactionSpec，效果需并入同一个 spec）
   useEffect(() => {
-    if (viewRef.current && viewRef.current.state.doc.toString() !== value) {
-      viewRef.current.dispatch({
-        changes: { from: 0, to: viewRef.current.state.doc.length, insert: value },
+    const view = viewRef.current
+    if (view && view.state.doc.toString() !== value) {
+      view.dispatch({
+        changes: { from: 0, to: view.state.doc.length, insert: value },
+        effects: view.scrollSnapshot(),
+        scrollIntoView: false,
       })
     }
   }, [value])

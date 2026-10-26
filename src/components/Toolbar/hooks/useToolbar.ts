@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from 'react'
 import type { EditorView } from '@codemirror/view'
-import type { ToolbarButtonConfig, ImageUploadConfig } from '../../../types'
+import type { ToolbarButtonConfig, ImageUploadConfig, NotifyFn } from '../../../types'
 import { createToolbarConfig } from '../config'
 import { toggleWrap } from '../buttons'
 
@@ -9,6 +9,8 @@ export interface UseToolbarOptions {
   extraItems?: ToolbarButtonConfig[]
   /** 图片上传配置 */
   uploadConfig?: ImageUploadConfig
+  /** 提示注入点（由宿主提供） */
+  notify?: NotifyFn
 }
 
 export interface UseToolbarReturn {
@@ -21,11 +23,10 @@ export function useToolbar(
   editorView: EditorView | null,
   options?: UseToolbarOptions
 ): UseToolbarReturn {
-  const { extraItems, uploadConfig } = options || {}
+  const { extraItems, uploadConfig, notify } = options || {}
   const config = useMemo(() => {
-    const base = createToolbarConfig(uploadConfig)
-    return base
-  }, [uploadConfig])
+    return createToolbarConfig({ upload: uploadConfig, notify })
+  }, [uploadConfig, notify])
 
   const extraItemsConfig = useMemo(() => {
     return extraItems || []

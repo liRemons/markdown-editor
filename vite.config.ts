@@ -1,6 +1,7 @@
 import react from '@vitejs/plugin-react'
 import dts from 'vite-plugin-dts'
-import { defineConfig, UserConfig } from 'vite'
+import { defineConfig } from 'vite'
+import type { UserConfig } from 'vite'
 import path from 'path'
 
 // https://vite.dev/config/
@@ -11,7 +12,7 @@ export default defineConfig(({ mode }) => {
     react(),
     isLib && dts({
       tsconfigPath: path.resolve(import.meta.dirname, 'tsconfig.lib.json'),
-      logLevel: 'error',
+      insertTypesEntry: true,
     }),
   ].filter(Boolean)
 
@@ -41,7 +42,6 @@ export default defineConfig(({ mode }) => {
               '@codemirror/state',
               '@codemirror/commands',
               '@codemirror/language',
-              '@codemirror/highlight',
               '@codemirror/lang-markdown',
               '@codemirror/theme-one-dark',
               '@lezer/common',
@@ -55,7 +55,7 @@ export default defineConfig(({ mode }) => {
             output: {
               chunkFileNames: 'assets/[name].[hash].js',
               assetFileNames: assetInfo => {
-                if (assetInfo.name.endsWith('.css')) return 'index.css'
+                if (assetInfo.name?.endsWith('.css')) return 'index.css'
                 return 'assets/[name].[hash][extname]'
               },
             },

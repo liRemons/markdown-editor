@@ -1,19 +1,25 @@
+import JSON5 from 'json5'
+import componentRegistry from '../registry/componentRegistry'
+
+/** 容器属性对象：值保留原始类型（string/number/boolean），写回时统一序列化 */
+export type ContainerProps = Record<string, string | number | boolean>
+
 /**
- * 解析容器属性 JSON 字符串。
- * 支持标准 JSON 和宽松格式: { key: 'value', key2: 'value2' }
+ * 解析容器属性行。
+ * 优先按 JSON5 解析（兼容标准 JSON 与 { key: 'value' } 宽松写法），
+ * 失败时返回空对象，保证往返编辑不丢数据。
  */
-export function parseContainerProps(jsonStr: string): Record<string, string> {
+export function parseContainerProps(line: string): ContainerProps {
+  const trimmed = line.trim()
+  if (!trimmed.startsWith('{') || !trimmed.endsWith('}')) return {}
   try {
-    const props: Record<string, string> = {}
-    const trimmed = jsonStr.trim()
-    if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
-      const inner = trimmed.slice(1, -1).trim()
-      if (!inner) return props
-      // 匹配 key: 'value' 或 key: "value" 格式
-      const matches = inner.matchAll(/(?:["']?)(\w+)(?:["']?)\s*:\s*(?:"([^"]*)"|'([^']*)'|(\d+))/g)
-      for (const m of matches) {
-        props[m[1]] = m[2] ?? m[3] ?? m[4] ?? ''
-      }
+    const parsed: unknown = JSON5.parse(trimmed)
+    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return {}
+    const props: ContainerProps = {}
+    for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
+      if (value === null || value === undefined) continue
+      if (typeof value === 'object') continue
+      props[key] = value as string | number | boolean
     }
     return props
   } catch {
@@ -22,76 +28,78 @@ export function parseContainerProps(jsonStr: string): Record<string, string> {
 }
 
 /**
- * 在编辑器文档中查找容器块。
- * 返回包含类型、属性和行位置的容器位置数组。
+ * 容器块位置信息（基于文档的绝对字符偏移）
  */
 export interface ContainerBlock {
-  startPos: number      // ::: 打开行位置
-  typeName: string      // 组件类型名称 (如 "linkCard")
-  propsLineFrom: number // JSON 属性行起始位置
-  propsLineTo: number   // JSON 属性行结束位置
-  props: Record<string, string>
-  endPos: number        // ::: 关闭行位置
+  /** ::: 打开行行首位置 */
+  startPos: number
+  /** 组件类型名称 (如 "linkCard") */
+  typeName: string
+  /** 属性行起始位置（0 表示无属性行） */
+  propsLineFrom: number
+  /** 属性行结束位置（0 表示无属性行） */
+  propsLineTo: number
+  /** 解析出的属性 */
+  props: ContainerProps
+  /** ::: 关闭行行首位置（0 表示未闭合） */
+  endPos: number
+  /** 类型是否已在注册中心登记（未登记的仅装饰、不可编辑） */
+  registered: boolean
 }
 
-export function findContainers(
-  docText: string
-): ContainerBlock[] {
+/**
+ * 在编辑器文档中查找容器块。
+ * 单次遍历 + 预累计行偏移，复杂度 O(行数)。
+ */
+export function findContainers(docText: string): ContainerBlock[] {
   const containers: ContainerBlock[] = []
   const lines = docText.split('\n')
 
-  let i = 0
-  while (i < lines.length) {
-    const line = lines[i]
-    const match = line.match(/^:::(\w+)$/)
-    if (match) {
-      const typeName = match[1]
-      // 计算字符位置
-      let charPos = 0
-      for (let l = 0; l < i; l++) {
-        charPos += lines[l].length + 1 // +1 for newline
-      }
+  // 每行行首的绝对偏移，offsets[i] = 前 i 行总长 + i 个换行符
+  const offsets: number[] = new Array(lines.length)
+  let pos = 0
+  for (let i = 0; i < lines.length; i++) {
+    offsets[i] = pos
+    pos += lines[i].length + 1
+  }
 
-      // 查找下一行的 JSON 属性
-      let props: Record<string, string> = {}
-      let propsLineFrom = 0
-      let propsLineTo = 0
-      let propsLineIndex = i + 1
+  for (let i = 0; i < lines.length; i++) {
+    const match = lines[i].match(/^:::(\w+)$/)
+    if (!match) continue
+    const typeName = match[1]
+    // 先固定头行位置：下方闭合搜索会把 i 改为闭合行下标，不能再依赖 i
+    const headerPos = offsets[i]
 
-      if (propsLineIndex < lines.length) {
-        const propsLine = lines[propsLineIndex].trim()
-        const propsMatch = propsLine.match(/^\{[\s\S]*\}$/)
-        if (propsMatch) {
-          props = parseContainerProps(propsLine)
-          propsLineFrom = charPos + line.length + 1
-          propsLineTo = propsLineFrom + lines[propsLineIndex].length
-        }
-      }
-
-      // 查找闭合 :::
-      let endPos = 0
-      for (let j = i + 1; j < lines.length; j++) {
-        if (lines[j].trim() === ':::') {
-          let endCharPos = 0
-          for (let l = 0; l < j; l++) {
-            endCharPos += lines[l].length + 1
-          }
-          endPos = endCharPos
-          i = j + 1
-          break
-        }
-      }
-
-      containers.push({
-        startPos: charPos,
-        typeName,
-        propsLineFrom,
-        propsLineTo,
-        props,
-        endPos,
-      })
+    // 属性行：打开行之后以 { 开头的行
+    let props: ContainerProps = {}
+    let propsLineFrom = 0
+    let propsLineTo = 0
+    const propsLine = lines[i + 1]
+    if (propsLine && propsLine.trim().startsWith('{') && propsLine.trim().endsWith('}')) {
+      props = parseContainerProps(propsLine)
+      propsLineFrom = offsets[i + 1]
+      propsLineTo = propsLineFrom + propsLine.length
     }
-    i++
+
+    // 查找闭合 :::
+    let endPos = 0
+    for (let j = i + 1; j < lines.length; j++) {
+      if (lines[j].trim() === ':::') {
+        endPos = offsets[j]
+        i = j
+        break
+      }
+    }
+
+    containers.push({
+      startPos: headerPos,
+      typeName,
+      propsLineFrom,
+      propsLineTo,
+      props,
+      endPos,
+      registered: componentRegistry.has(typeName),
+    })
   }
 
   return containers

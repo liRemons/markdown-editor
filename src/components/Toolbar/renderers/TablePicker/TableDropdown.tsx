@@ -1,12 +1,15 @@
-import React, { useCallback, useRef } from 'react'
+import { useCallback, useState } from 'react'
 import { EditorView } from '@codemirror/view'
 import { Button, Dropdown } from 'antd'
 import { TableOutlined } from '@ant-design/icons'
 import TablePicker from './index'
 
 export default function TableDropdown({ editorView }: { editorView: EditorView | null }) {
-  const [open, setOpen] = React.useState(false)
-  const openCountRef = useRef(0)
+  const [open, setOpen] = useState(false)
+
+  const handleOpenChange = useCallback((next: boolean) => {
+    setOpen(next)
+  }, [])
 
   const handleTableSelect = useCallback((rows: number, cols: number) => {
     if (!editorView || rows <= 0 || cols <= 0) return
@@ -24,21 +27,18 @@ export default function TableDropdown({ editorView }: { editorView: EditorView |
     <Dropdown
       trigger={['click']}
       open={open}
-      onOpenChange={setOpen}
-      popupRender={() => {
-        openCountRef.current++
-        return (
-          <div style={{ padding: 4 }} onClick={(e) => e.stopPropagation()}>
-            <TablePicker
-              key={openCountRef.current}
-              onSelect={(size) => {
-                handleTableSelect(size.rows, size.cols)
-                setOpen(false)
-              }}
-            />
-          </div>
-        )
-      }}
+      onOpenChange={handleOpenChange}
+      destroyOnHidden
+      popupRender={() => (
+        <div style={{ padding: 4 }}>
+          <TablePicker
+            onSelect={(size) => {
+              handleTableSelect(size.rows, size.cols)
+              setOpen(false)
+            }}
+          />
+        </div>
+      )}
       placement="bottomLeft"
     >
       <Button className="toolbar-button" type="text" size="small" title="表格">

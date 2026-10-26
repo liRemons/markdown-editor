@@ -96,15 +96,17 @@ import type { ComponentSchema } from '../types'
  * @example 批量注册
  * ```tsx
  * function MyPage() {
+ *   // 注意：schema 需声明为稳定引用（组件外常量或 useMemo），
+ *   // 否则每次渲染都会重新注册；多实例互不干扰的场景请改用
+ *   // <MarkdownEditor schemas={[...]} /> 局部注册
  *   useRegisterToolbar([schema1, schema2, schema3])
  *   return <MarkdownEditor />
  * }
  * ```
  */
 export function useRegisterToolbar(schemas: ComponentSchema | ComponentSchema[]) {
-  const schemaList: ComponentSchema[] = Array.isArray(schemas) ? schemas : [schemas]
-
   useEffect(() => {
+    const schemaList: ComponentSchema[] = Array.isArray(schemas) ? schemas : [schemas]
     schemaList.forEach(schema => {
       componentRegistry.register(schema.name, schema)
     })
@@ -113,5 +115,5 @@ export function useRegisterToolbar(schemas: ComponentSchema | ComponentSchema[])
         componentRegistry.unregister(schema.name)
       })
     }
-  }, [schemaList])
+  }, [schemas])
 }

@@ -1,8 +1,11 @@
 import { useState, useMemo, useEffect, useRef, type FC } from 'react'
 import { Modal, Form, Input, InputNumber, Select, Switch, Slider, Rate, DatePicker, ColorPicker } from 'antd'
 import type { FormInstance, FormItemProps } from 'antd'
+import dayjs from 'dayjs'
+import type { Dayjs } from 'dayjs'
 import componentRegistry from '../../registry/componentRegistry'
 import type { DialogField } from '../../types'
+import type { ContainerProps } from '../../utils/parseContainer'
 
 /**
  * 组件类型到 antd 表单组件的映射
@@ -21,7 +24,7 @@ const FormComponents: Record<string, FC<any>> = {
 }
 
 /**
- * 渲染对应类型的 antd 表单组件
+ * 渲染对应类型的 antd 表单组件（仅接收 componentProps，不再与 Form.Item props 混用）
  */
 function renderFormItemComponent(field: DialogField) {
   const props = field.componentProps || {}
@@ -38,7 +41,7 @@ function renderAutoForm(form: FormInstance, fields: DialogField[]) {
   }
 
   return (
-    <Form form={form} layout="vertical">
+    <Form form={form} layout="vertical" preserve={false}>
       {fields.map(field => {
         if (!field.componentType) {
           return null
@@ -48,7 +51,7 @@ function renderAutoForm(form: FormInstance, fields: DialogField[]) {
           name: field.key,
           label: field.name || field.key,
           valuePropName: field.componentType === 'switch' ? 'checked' : undefined,
-          ...field.componentProps,
+          ...field.formItemProps,
         }
 
         return (
@@ -61,6 +64,54 @@ function renderAutoForm(form: FormInstance, fields: DialogField[]) {
   )
 }
 
+/** 字符串形式的历史属性值（'true'/'false'）还原为布尔，供 Switch 初始化 */
+function toFormInitialValue(field: DialogField, value: string | number | boolean | undefined): unknown {
+  if (value === undefined) return field.defaultValue ?? (field.componentType === 'switch' ? false : undefined)
+  if (field.componentType === 'switch') {
+    if (typeof value === 'boolean') return value
+    return value === 'true' || value === 1 || value === '1'
+  }
+  if (field.componentType === 'number' || field.componentType === 'slider' || field.componentType === 'rate') {
+    const num = Number(value)
+    return Number.isNaN(num) ? undefined : num
+  }
+  if (field.componentType === 'date') {
+    const d = dayjs(typeof value === 'boolean' ? String(value) : (value as string | number))
+    return d.isValid() ? d : undefined
+  }
+  if (field.componentType === 'dateRange') {
+    // 属性值为单行字符串，约定以 ',' 分隔两个日期
+    const parts = String(value).split(',').map(s => s.trim()).filter(Boolean)
+    if (parts.length !== 2) return undefined
+    const [start, end] = parts.map(p => dayjs(p))
+    return start.isValid() && end.isValid() ? [start, end] : undefined
+  }
+  return value
+}
+
+/** 表单控件值归一化为容器属性可存储的字符串（容器语法仅支持扁平原始值） */
+function normalizeValue(field: DialogField | undefined, value: unknown): string | number | boolean {
+  if (value === null || value === undefined) return ''
+  if (field?.componentType === 'date' && dayjs.isDayjs(value)) {
+    return (value as Dayjs).format('YYYY-MM-DD')
+  }
+  if (field?.componentType === 'dateRange' && Array.isArray(value)) {
+    return value
+      .filter(v => dayjs.isDayjs(v))
+      .map(v => (v as Dayjs).format('YYYY-MM-DD'))
+      .join(', ')
+  }
+  // ColorPicker 在 Form 中可能给出 string 或 { toHexString } 对象
+  const colorLike = value as { toHexString?: () => string }
+  if (colorLike && typeof colorLike === 'object' && typeof colorLike.toHexString === 'function') {
+    return colorLike.toHexString()
+  }
+  if (typeof value === 'boolean' || typeof value === 'number') {
+    return value
+  }
+  return String(value)
+}
+
 /**
  * 弹窗编辑容器属性的组件
  */
@@ -70,9 +121,9 @@ interface EditDialogProps {
   /** 容器类型名称 */
   typeName: string
   /** 当前属性值 */
-  currentProps: Record<string, string>
+  currentProps: ContainerProps
   /** 保存回调 */
-  onSave: (props: Record<string, string>) => void
+  onSave: (props: ContainerProps) => void
   /** 关闭回调 */
   onClose: () => void
 }
@@ -83,44 +134,62 @@ interface EditDialogProps {
  */
 export default function EditDialog({ visible, typeName, currentProps, onSave, onClose }: EditDialogProps) {
   const schema = componentRegistry.get(typeName)
-  const [formProps, setFormProps] = useState<Record<string, string>>({})
+  const [formProps, setFormProps] = useState<ContainerProps>({})
   const [form] = Form.useForm()
 
   const onSaveRef = useRef(onSave)
   onSaveRef.current = onSave
   const dirtyRef = useRef(false)
 
-  // 当弹窗打开时，初始化表单值
-  const mergedProps = useMemo(() => {
+  // 容器属性值统一按字符串读取（写入时也统一序列化为字符串）
+  const mergedProps = useMemo<ContainerProps>(() => {
     if (!schema) return currentProps
-    const defaults: Record<string, string> = {}
+    const merged: ContainerProps = {}
     for (const field of schema.fields || []) {
-      defaults[field.key] = field.defaultValue ?? ''
+      if (field.defaultValue !== undefined) merged[field.key] = field.defaultValue
     }
-    return { ...defaults, ...currentProps }
+    return { ...merged, ...currentProps }
   }, [schema, currentProps])
 
-  // 弹窗打开时设置表单值
+  // 仅在弹窗"由关到开"的瞬间初始化一次，避免重渲染覆盖用户正在编辑的内容
   useEffect(() => {
     if (visible) {
-      form.setFieldsValue(mergedProps)
       setFormProps({})
+      const initial: Record<string, unknown> = {}
+      for (const [key, value] of Object.entries(mergedProps)) {
+        const field = schema?.fields?.find(f => f.key === key)
+        const formValue = toFormInitialValue(field ?? { key }, value)
+        if (formValue !== undefined) initial[key] = formValue
+      }
+      form.setFieldsValue(initial)
+      dirtyRef.current = false
     }
-  }, [visible, mergedProps, form])
+    // mergedProps 仅作为开弹窗时的快照，刻意不响应其后续变化
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, form])
 
-  const handleDialogChange = (key: string, value: string) => {
+  const handleDialogChange = (key: string, value: string | number | boolean) => {
     setFormProps(prev => ({ ...prev, [key]: value }))
+    dirtyRef.current = true
   }
 
   const handleOk = async () => {
-    let finalProps: Record<string, any> = visible ? { ...mergedProps, ...formProps } : mergedProps
-
-    // 尝试从 Form 获取值（如果用户使用了 Form.Item 或自动表单）
     try {
       const formValues = await form.validateFields()
-      finalProps = { ...finalProps, ...formValues }
+      for (const [key, value] of Object.entries(formValues)) {
+        // 非归一化的控件值（dayjs/Color 等）先以 unknown 充入，后续统一 normalizeValue
+        ;(formProps as Record<string, unknown>)[key] = value
+      }
     } catch {
-      // 用户没有使用 Form.Item，使用原有的逻辑
+      // 校验失败：保持弹窗打开，由 antd 展示字段错误
+      return
+    }
+
+    // 统一归一化：日期/颜色/布尔/数字 → 容器可存储的原始值
+    const finalProps: ContainerProps = {}
+    for (const [key, value] of Object.entries({ ...mergedProps, ...formProps })) {
+      const field = schema?.fields?.find(f => f.key === key)
+      finalProps[key] = normalizeValue(field, value)
     }
 
     onSaveRef.current(finalProps)
@@ -129,6 +198,9 @@ export default function EditDialog({ visible, typeName, currentProps, onSave, on
   }
 
   const handleClose = () => {
+    if (dirtyRef.current && !window.confirm('属性修改尚未保存，确定关闭吗？')) {
+      return
+    }
     setFormProps({})
     dirtyRef.current = false
     onClose()
@@ -139,15 +211,15 @@ export default function EditDialog({ visible, typeName, currentProps, onSave, on
   }
 
   // 构建 context 对象，供 renderDialog 使用
-  // context.onSave 为包装函数：仅写回编辑器并标记脏状态，不触发弹窗关闭；
+  // context.onSave 为包装函数：仅更新弹窗内属性并标记脏状态；
   // 弹窗关闭由 onOk / onCancel 最终统一处理
-  const contextSave = (props: Record<string, string>) => {
+  const contextSave = (props: ContainerProps) => {
     setFormProps(prev => ({ ...prev, ...props }))
     dirtyRef.current = true
   }
 
   const context = {
-    props: mergedProps,
+    props: { ...mergedProps, ...formProps },
     form,
     onChange: handleDialogChange,
     onSave: contextSave,

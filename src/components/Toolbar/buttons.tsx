@@ -264,7 +264,7 @@ export function dedentMarkdownList(view: EditorView): boolean {
 }
 
 /**
- * 上传图片
+ * 上传图片：失败（含网络异常）统一返回 null，不抛错
  * @param file - 要上传的文件
  * @param uploadConfig - 上传配置
  */
@@ -272,43 +272,48 @@ export async function uploadFileToServer(
   file: File,
   uploadConfig: ImageUploadConfig
 ): Promise<string | null> {
-  // 优先使用自定义上传函数
-  if (uploadConfig.onUploadImage) {
-    return uploadConfig.onUploadImage(file)
-  }
-
-  // 使用 uploadUrl 上传
-  if (uploadConfig.uploadUrl) {
-    const formData = new FormData()
-    formData.append('file', file)
-
-    const response = await fetch(uploadConfig.uploadUrl, {
-      method: 'POST',
-      body: formData,
-    })
-
-    if (!response.ok) return null
-
-    const result = await response.json()
-    
-    // 如果外部提供了 URL 提取回调，使用它
-    if (uploadConfig.onGetUploadUrl) {
-      return uploadConfig.onGetUploadUrl(result)
+  try {
+    // 优先使用自定义上传函数
+    if (uploadConfig.onUploadImage) {
+      return await uploadConfig.onUploadImage(file)
     }
-    
-    // 默认行为
-    return result.data?.path || null
-  }
 
-  return null
+    // 使用 uploadUrl 上传
+    if (uploadConfig.uploadUrl) {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const response = await fetch(uploadConfig.uploadUrl, {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (!response.ok) return null
+
+      const result: unknown = await response.json()
+
+      // 如果外部提供了 URL 提取回调，使用它
+      if (uploadConfig.onGetUploadUrl) {
+        return uploadConfig.onGetUploadUrl(result)
+      }
+
+      // 默认行为
+      const path = (result as { data?: { path?: string } })?.data?.path
+      return path ?? null
+    }
+
+    return null
+  } catch {
+    return null
+  }
 }
 
 /**
- * 判断是否配置了图片上传
+ * 判断是否配置了图片上传（类型谓词，守卫后可安全访问配置）
  */
 export function isUploadConfigured(
   uploadConfig?: ImageUploadConfig
-): boolean {
+): uploadConfig is ImageUploadConfig {
   return !!(uploadConfig?.uploadUrl || uploadConfig?.onUploadImage)
 }
 
@@ -324,7 +329,6 @@ export function uploadImage(
   const input = document.createElement('input')
   input.type = 'file'
   input.accept = 'image/*'
-  input.style.display = 'none'
 
   input.addEventListener('change', async () => {
     if (!input.files || input.files.length === 0) return
@@ -342,7 +346,6 @@ export function uploadImage(
     input.remove()
   })
 
-  document.body.appendChild(input)
   input.click()
 }
 

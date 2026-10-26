@@ -8,14 +8,18 @@ import type { OnEditContainer } from './containerWidget'
 import { uploadFileToServer, isUploadConfigured, indentMarkdownList, dedentMarkdownList } from '../Toolbar/buttons'
 import type { ImageUploadConfig } from '../../types'
 
-/** 图片上传配置 facet */
-const uploadConfigFacet = Facet.define<ImageUploadConfig | undefined, ImageUploadConfig | undefined>({
-  combine: (values) => values[values.length - 1],
+/**
+ * 图片上传配置 facet。
+ * 传入 getter 而非配置本身：扩展只在 mount 时创建一次，
+ * 运行期通过 getter 读取最新配置，避免闭包过期。
+ */
+const uploadConfigFacet = Facet.define<() => ImageUploadConfig | undefined, (() => ImageUploadConfig | undefined) | null>({
+  combine: (values) => (values.length ? values[values.length - 1] : null),
 })
 
-/** 未配置上传时的提示回调 facet */
-const messageFacet = Facet.define<(() => void) | undefined, (() => void) | undefined>({
-  combine: (values) => values[values.length - 1],
+/** 未配置上传时的提示回调 facet（同为 getter 形式） */
+const messageFacet = Facet.define<() => (() => void) | undefined, (() => (() => void) | undefined) | null>({
+  combine: (values) => (values.length ? values[values.length - 1] : null),
 })
 
 /** 粘贴事件处理：拦截图片并上传 */
@@ -29,25 +33,38 @@ const pasteHandler = EditorView.domEventHandlers({
 
     event.preventDefault()
 
-    const uploadConfig = view.state.facet(uploadConfigFacet)
-    const showMessage = view.state.facet(messageFacet)
+    const uploadConfig = view.state.facet(uploadConfigFacet)?.()
+    const showMessage = view.state.facet(messageFacet)?.()
 
     if (!isUploadConfigured(uploadConfig)) {
       showMessage?.()
       return true
     }
 
-    // 上传所有粘贴的图片
-    const { from, to } = view.state.selection.main
-    let offset = 0
+    // 首个插入替换粘贴时的选区；后续插入基于"最新文档末尾"追加，
+    // 避免异步上传完成后使用过期位置导致插入错乱
+    const config = uploadConfig
+    let isFirst = true
 
     for (const file of imageFiles) {
-      uploadFileToServer(file, uploadConfig!).then((url) => {
-        if (url) {
-          const name = file.name.replace(/\.[^.]+$/, '')
-          const insert = `![${name}](${url})`
-          view.dispatch({ changes: { from: from + offset, to: to + offset, insert } })
-          offset += insert.length
+      uploadFileToServer(file, config).then((url) => {
+        if (!url) return
+        const name = file.name.replace(/\.[^.]+$/, '')
+        const insert = `![${name}](${url})`
+        const { state } = view
+        if (isFirst) {
+          isFirst = false
+          const { from, to } = state.selection.main
+          view.dispatch({
+            changes: { from, to, insert },
+            selection: { anchor: from + insert.length },
+          })
+        } else {
+          const end = state.doc.length
+          view.dispatch({
+            changes: { from: end, insert: `\n${insert}` },
+            selection: { anchor: end + insert.length + 1 },
+          })
         }
       })
     }
@@ -59,10 +76,10 @@ const pasteHandler = EditorView.domEventHandlers({
 interface GetCodeMirrorExtensionsOptions {
   /** 编辑容器属性的回调函数 */
   onEditContainer?: OnEditContainer
-  /** 图片上传配置 */
-  uploadConfig?: ImageUploadConfig
-  /** 未配置上传时的提示回调 */
-  onMessageNoUploadConfig?: () => void
+  /** 获取最新图片上传配置（运行期求值） */
+  getUploadConfig?: () => ImageUploadConfig | undefined
+  /** 获取最新"未配置上传"提示回调（运行期求值） */
+  getOnMessageNoUploadConfig?: () => (() => void) | undefined
 }
 
 export const getCodeMirrorExtensions = (opts?: GetCodeMirrorExtensionsOptions) => {
@@ -122,19 +139,15 @@ export const getCodeMirrorExtensions = (opts?: GetCodeMirrorExtensionsOptions) =
   // 添加容器 widget 插件
   extensions.push(containerWidgetPlugin)
 
-  // 如果有编辑回调，注册 facet
+  // 注册各类回调/配置 facet（getter 形式，运行期读取最新值）
   if (opts?.onEditContainer) {
     extensions.push(containerEditCallback.of(opts.onEditContainer))
   }
-
-  // 如果有图片上传配置，注册 facet
-  if (opts?.uploadConfig) {
-    extensions.push(uploadConfigFacet.of(opts.uploadConfig))
+  if (opts?.getUploadConfig) {
+    extensions.push(uploadConfigFacet.of(opts.getUploadConfig))
   }
-
-  // 如果有消息回调，注册 facet
-  if (opts?.onMessageNoUploadConfig) {
-    extensions.push(messageFacet.of(opts.onMessageNoUploadConfig))
+  if (opts?.getOnMessageNoUploadConfig) {
+    extensions.push(messageFacet.of(opts.getOnMessageNoUploadConfig))
   }
 
   return extensions

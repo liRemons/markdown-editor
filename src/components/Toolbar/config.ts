@@ -1,5 +1,4 @@
-import { message } from 'antd';
-import type { ToolbarButtonConfig, ImageUploadConfig } from '../../types'
+import type { ToolbarButtonConfig, ImageUploadConfig, NotifyFn } from '../../types'
 import {
   BoldOutlined,
   ItalicOutlined,
@@ -28,13 +27,21 @@ function InlineCode() {
 /** 未配置图片上传时的提示文案 */
 const UPLOAD_CONFIG_MISSING_MESSAGE = '请先配置图片上传功能'
 
+interface ToolbarConfigOptions {
+  /** 图片上传配置 */
+  upload?: ImageUploadConfig
+  /** 提示注入点（由宿主提供，如 antd App 上下文的 message） */
+  notify?: NotifyFn
+}
+
 /**
  * 创建工具栏配置
  * @param options - 配置选项
  */
-export function createToolbarConfig(options?: ImageUploadConfig): ToolbarButtonConfig[] {
+export function createToolbarConfig(options?: ToolbarConfigOptions): ToolbarButtonConfig[] {
   // 判断是否配置了图片上传
-  const hasUploadConfig = isUploadConfigured(options)
+  const hasUploadConfig = isUploadConfigured(options?.upload)
+  const notify = options?.notify
   return [
     {
       id: 'heading',
@@ -66,9 +73,9 @@ export function createToolbarConfig(options?: ImageUploadConfig): ToolbarButtonC
       id: 'image',
       label: '图片',
       icon: PictureOutlined,
-      handler: hasUploadConfig && options
-        ? (v) => uploadImage(v, options)
-        : () => message.warning(UPLOAD_CONFIG_MISSING_MESSAGE),
+      handler: hasUploadConfig && options?.upload
+        ? (v) => uploadImage(v, options.upload!)
+        : () => notify?.('warning', UPLOAD_CONFIG_MISSING_MESSAGE),
     },
     { separatorBefore: true },
     { id: 'code', label: '行内代码', icon: InlineCode, handler: (v) => wrapSelection(v, '`', '`') },

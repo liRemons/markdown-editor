@@ -13,21 +13,17 @@
   },
   "homepage": "https://github.com/liRemons/markdown-editor#readme",
   "sideEffects": [
-    "*.css"
+    "*.css",
+    "*.less"
   ],
   "files": [
     "dist"
   ],
   "exports": {
     ".": {
-      "import": {
-        "types": "./dist/index.d.ts",
-        "default": "./dist/index.js"
-      },
-      "require": {
-        "types": "./dist/index.d.cts",
-        "default": "./dist/index.cjs"
-      }
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
     },
     "./style.css": "./dist/index.css"
   },
@@ -42,9 +38,7 @@
     "registry": "https://registry.npmjs.org/"
   },
   "dependencies": {
-    "@ant-design/icons": "^6.3.4",
     "@codemirror/commands": "^6.11.0",
-    "@codemirror/highlight": "^0.19.8",
     "@codemirror/lang-markdown": "^6.3.2",
     "@codemirror/language": "^6.12.4",
     "@codemirror/state": "^6.5.2",
@@ -52,13 +46,16 @@
     "@codemirror/view": "^6.36.4",
     "@lezer/common": "^1.2.3",
     "@lezer/highlight": "^1.2.3",
-    "antd": "^6.6.3",
     "codemirror": "^6.0.1",
     "highlight.js": "^11.12.0",
-    "remons-markdown-plugins": "^1.0.0-beta.14",
-    "remons-render-markdown": "^1.0.28-beta.14"
+    "json5": "^2.2.3",
+    "remons-markdown-plugins": "^2.0.0-beta.0",
+    "remons-render-markdown": "^2.0.1-beta.4"
   },
   "peerDependencies": {
+    "antd": ">=5.21.6",
+    "@ant-design/icons": ">=5.0.0",
+    "dayjs": ">=1.11.13",
     "react": "^18.0.0",
     "react-dom": "^18.0.0"
   },

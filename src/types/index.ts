@@ -1,12 +1,14 @@
 import type { EditorView } from '@codemirror/view'
 import type { EditorState as CMEditorState } from '@codemirror/state'
-import type { FormInstance } from 'antd'
+import type { FormInstance, FormItemProps } from 'antd'
 import type React from 'react'
+import type { ContainerProps } from '../utils/parseContainer'
 
 // 工具栏按钮配置接口 — 单一递归类型，支持嵌套 children
 export interface ToolbarButtonConfig {
   id?: string
-  icon?: React.ComponentType | React.ReactNode
+  /** 图标统一为组件类型，由渲染层 <Icon /> 实例化 */
+  icon?: React.ComponentType
   label?: string
   // 支持嵌套子项（如 dropdown 菜单）
   children?: ToolbarButtonConfig[]
@@ -48,7 +50,7 @@ export interface DialogField {
   /** 字段显示名称（表单 label） */
   name?: string
   /** 默认值 */
-  defaultValue?: string
+  defaultValue?: string | number | boolean
   /**
    * 表单组件类型（可选）
    * 配置后 EditDialog 会自动渲染对应的 antd 表单组件，无需手写 Form 结构
@@ -56,10 +58,15 @@ export interface DialogField {
    */
   componentType?: FormComponentType
   /**
-   * 组件额外属性（可选）
-   * 传递对应 antd 组件的 props
+   * 控件组件额外属性（可选），仅传给表单控件本身
+   * 如 Select 的 options、Input.TextArea 的 rows
    */
   componentProps?: Record<string, any>
+  /**
+   * Form.Item 额外属性（可选），仅传给 Form.Item
+   * 如 rules、required 等，不会污染控件 DOM
+   */
+  formItemProps?: FormItemProps
 }
 
 /**
@@ -72,8 +79,8 @@ export interface ComponentSchema {
   name: string
   /** 工具栏按钮显示的标签 */
   label: string
-  /** 工具栏按钮显示的图标 */
-  icon?: React.ReactNode
+  /** 工具栏按钮显示的图标（组件类型，与 ToolbarButtonConfig.icon 一致） */
+  icon?: React.ComponentType
   /**
    * 标签包裹配置：设置为 [openTag, closeTag] 时，使用标签包裹模式（而非 :::name 容器）
    * 配置后无需提供 fields 和 renderDialog
@@ -136,14 +143,17 @@ export interface ComponentSchema {
  */
 export interface DialogRenderContext {
   /** 当前属性值（合并默认值与当前的值） */
-  props: Record<string, string>
+  props: ContainerProps
   /** 表单实例，用于 Form.Item 自动绑定 */
   form: FormInstance
   /** 属性变更回调（手动控制方式） */
-  onChange: (key: string, value: string) => void
+  onChange: (key: string, value: string | number | boolean) => void
   /** 直接保存属性（完全自定义方式，调用后弹窗不会自动关闭） */
-  onSave: (props: Record<string, string>) => void
+  onSave: (props: ContainerProps) => void
 }
+
+/** 全局消息提示注入点（如 antd message.error），缺省用 console，宿主可接管 */
+export type NotifyFn = (type: 'info' | 'warning' | 'error', content: string) => void
 
 /**
  * 图片上传配置

@@ -1,10 +1,7 @@
-import { createFromIconfontCN } from '@ant-design/icons';
-
-const Icon = createFromIconfontCN({
-  scriptUrl: 'https://at.alicdn.com/t/c/font_5241307_xoojyr52dqn.js',
-});
+import { getIconComponent } from './config'
 
 function IconComponent(type: string, className?: string) {
+  const Icon = getIconComponent()
   return (
     <Icon type={`icon-${type}`} className={className} />
   )

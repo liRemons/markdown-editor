@@ -1,11 +1,11 @@
-import { useCallback } from 'react'
-import { EditorView } from '@codemirror/view'
+import { useCallback, memo } from 'react'
+import type { EditorView } from '@codemirror/view'
 import { Button } from 'antd'
 import { FullscreenOutlined, FullscreenExitOutlined } from '@ant-design/icons'
 import { useToolbar } from './hooks/useToolbar'
 import { ToolbarItemRenderer } from './renderers/ToolbarItemRenderer'
 import TableDropdown from './renderers/TablePicker/TableDropdown'
-import type { ToolbarButtonConfig, ImageUploadConfig } from '../../types'
+import type { ToolbarButtonConfig, ImageUploadConfig, NotifyFn } from '../../types'
 
 interface ToolbarProps {
   editorView: EditorView | null
@@ -15,10 +15,12 @@ interface ToolbarProps {
   extraItems?: ToolbarButtonConfig[]
   /** 图片上传配置 */
   uploadConfig?: ImageUploadConfig
+  /** 提示注入点（由宿主提供） */
+  notify?: NotifyFn
 }
 
-export default function Toolbar({ editorView, fullscreen = true, onToggleFullscreen, extraItems, uploadConfig }: ToolbarProps) {
-  const { config, extraItemsConfig, handleClick } = useToolbar(editorView, { extraItems, uploadConfig })
+function Toolbar({ editorView, fullscreen = true, onToggleFullscreen, extraItems, uploadConfig, notify }: ToolbarProps) {
+  const { config, extraItemsConfig, handleClick } = useToolbar(editorView, { extraItems, uploadConfig, notify })
 
   const renderFullscreen = useCallback(() => {
     if (!onToggleFullscreen) return null
@@ -73,3 +75,7 @@ export default function Toolbar({ editorView, fullscreen = true, onToggleFullscr
     </div>
   )
 }
+
+// memo：工具栏是 props 的纯函数（无内部 state），各项 props 在输入时引用均稳定，
+// content 变化不应连带重渲染整个工具栏
+export default memo(Toolbar)
