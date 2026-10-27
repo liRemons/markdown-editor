@@ -15,23 +15,25 @@ export function writeContainerProps(props: ContainerProps): string {
  * 更新编辑器文档中的容器属性。
  * 已有属性行则整行替换；没有属性行则在容器头行后插入一行。
  * @param headerPos 容器头行（:::type）任意位置，用于无属性行时定位插入点
+ * @param quotePrefix 容器所处的引用前缀（如 "> "），嵌套在引用中时插入的属性行需保持一致
  */
 export function updateContainerProps(
   view: EditorView,
   headerPos: number,
   propsLineFrom: number,
   propsLineTo: number,
-  newProps: ContainerProps
+  newProps: ContainerProps,
+  quotePrefix = ''
 ): void {
   const newPropsLine = writeContainerProps(newProps)
   if (propsLineTo > propsLineFrom) {
     view.dispatch({
-      changes: { from: propsLineFrom, to: propsLineTo, insert: newPropsLine },
+      changes: { from: propsLineFrom, to: propsLineTo, insert: `${quotePrefix}${newPropsLine}` },
     })
   } else {
     const headerLine = view.state.doc.lineAt(headerPos)
     view.dispatch({
-      changes: { from: headerLine.to, insert: `\n${newPropsLine}` },
+      changes: { from: headerLine.to, insert: `\n${quotePrefix}${newPropsLine}` },
     })
   }
 }

@@ -20,7 +20,6 @@ export default function TablePicker({ onSelect }: TablePickerProps) {
   const prevRowRef = useRef(0)
   const pendingColsRef = useRef(0)
   const flashTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const commitRef = useRef<TableSize | null>(null)
 
   const clearFlash = useCallback(() => {
     if (flashTimerRef.current) {
@@ -51,10 +50,6 @@ export default function TablePicker({ onSelect }: TablePickerProps) {
     const cols = pendingColsRef.current
     setSize({ rows: row, cols })
     prevRowRef.current = row
-
-    if (row === 1) {
-      commitRef.current = { cols, rows: 1 }
-    }
   }
 
   /**
@@ -70,9 +65,6 @@ export default function TablePicker({ onSelect }: TablePickerProps) {
         clearFlash()
         const finalRow = current - step
         setSize({ rows: finalRow, cols: col })
-        if (finalRow === 1) {
-          commitRef.current = { cols: col, rows: 1 }
-        }
         return
       }
       setSize({ rows: current, cols: col })
@@ -107,9 +99,9 @@ export default function TablePicker({ onSelect }: TablePickerProps) {
   }
 
   function onMouseDown() {
-    const picked = commitRef.current || size
-    if (picked.rows > 0 && picked.cols > 0) {
-      onSelect(picked)
+    // 提交当前高亮区域（size 始终与视觉高亮一致）
+    if (size.rows > 0 && size.cols > 0) {
+      onSelect(size)
     }
   }
 

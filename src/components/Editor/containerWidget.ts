@@ -1,8 +1,19 @@
 import { ViewPlugin, Decoration, WidgetType, EditorView } from '@codemirror/view'
 import type { DecorationSet } from '@codemirror/view'
-import { EditorState, Facet } from '@codemirror/state'
+import { EditorState, Facet, StateEffect } from '@codemirror/state'
+import type { Transaction } from '@codemirror/state'
 import { findContainers } from '../../utils/parseContainer'
 import type { ContainerBlock } from '../../utils/parseContainer'
+import componentRegistry from '../../registry/componentRegistry'
+
+/**
+ * 唤醒容器装饰重建的状态 effect（不改变文档）。
+ * 编辑按钮是否展示取决于容器类型是否已注册，而宿主常在编辑器挂载之后才
+ * 通过 useRegisterToolbar 异步注册 schema；注册不是 CodeMirror 事务，默认不会触发
+ * ViewPlugin.update，导致初始化时烘焙的 registered=false 无法刷新（需手动改一个字才出现）。
+ * 宿主在注册中心版本变化时 dispatch 本 effect，驱动插件重新求值 registered。
+ */
+export const refreshContainers = StateEffect.define<null>()
 
 /**
  * 编辑容器属性的回调函数类型
@@ -27,7 +38,9 @@ class ContainerHeaderWidget extends WidgetType {
   constructor(
     private typeName: string,
     private containerIndex: number,
-    private registered: boolean
+    private registered: boolean,
+    /** 嵌套在引用中时的原始前缀（如 "> "），整行被 widget 替换，需原样展示 */
+    private quotePrefix: string
   ) {
     super()
   }
@@ -38,7 +51,7 @@ class ContainerHeaderWidget extends WidgetType {
 
     const text = document.createElement('span')
     text.className = 'container-widget-text'
-    text.textContent = `:::${this.typeName}`
+    text.textContent = `${this.quotePrefix}:::${this.typeName}`
     container.appendChild(text)
 
     // 仅已注册的类型提供编辑入口，未注册容器（如 :::note）保持只读展示
@@ -58,7 +71,8 @@ class ContainerHeaderWidget extends WidgetType {
     return (
       this.typeName === other.typeName &&
       this.containerIndex === other.containerIndex &&
-      this.registered === other.registered
+      this.registered === other.registered &&
+      this.quotePrefix === other.quotePrefix
     )
   }
 
@@ -69,21 +83,28 @@ class ContainerHeaderWidget extends WidgetType {
 
 /**
  * 只读的容器属性行 Widget（显示 { key: value, ... }）
+ * 嵌套在引用中时原始行带 "> " 前缀，展示时剔除，与头行 widget 风格一致
  */
 class ContainerPropsWidget extends WidgetType {
-  constructor(private propsText: string) {
+  constructor(
+    private propsText: string,
+    private quotePrefix: string
+  ) {
     super()
   }
 
   toDOM(): HTMLElement {
     const span = document.createElement('span')
     span.className = 'container-widget-props'
-    span.textContent = this.propsText
+    const text = this.propsText.startsWith(this.quotePrefix)
+      ? this.propsText.slice(this.quotePrefix.length)
+      : this.propsText
+    span.textContent = text
     return span
   }
 
   eq(other: ContainerPropsWidget): boolean {
-    return this.propsText === other.propsText
+    return this.propsText === other.propsText && this.quotePrefix === other.quotePrefix
   }
 
   ignoreEvent(): boolean {
@@ -92,18 +113,22 @@ class ContainerPropsWidget extends WidgetType {
 }
 
 /**
- * 只读的容器结束行 Widget（显示 :::）
+ * 只读的容器结束行 Widget（显示 :::，嵌套引用时保留 "> " 前缀）
  */
 class ContainerCloseWidget extends WidgetType {
+  constructor(private text: string) {
+    super()
+  }
+
   toDOM(): HTMLElement {
     const span = document.createElement('span')
     span.className = 'container-widget-text'
-    span.textContent = ':::'
+    span.textContent = this.text
     return span
   }
 
-  eq(): boolean {
-    return true
+  eq(other: ContainerCloseWidget): boolean {
+    return this.text === other.text
   }
 
   ignoreEvent(): boolean {
@@ -127,7 +152,12 @@ function findContainerDecorations(state: EditorState): Array<{ from: number; to:
       from: headerLine.from,
       to: headerLine.to,
       value: Decoration.replace({
-        widget: new ContainerHeaderWidget(container.typeName, index, container.registered),
+        widget: new ContainerHeaderWidget(
+          container.typeName,
+          index,
+          container.registered,
+          container.quotePrefix ?? ''
+        ),
       }),
     })
 
@@ -138,7 +168,7 @@ function findContainerDecorations(state: EditorState): Array<{ from: number; to:
         from: propsLine.from,
         to: propsLine.to,
         value: Decoration.replace({
-          widget: new ContainerPropsWidget(propsLine.text),
+          widget: new ContainerPropsWidget(propsLine.text, container.quotePrefix ?? ''),
         }),
       })
     }
@@ -150,11 +180,16 @@ function findContainerDecorations(state: EditorState): Array<{ from: number; to:
         from: endLine.from,
         to: endLine.to,
         value: Decoration.replace({
-          widget: new ContainerCloseWidget(),
+          widget: new ContainerCloseWidget(endLine.text),
         }),
       })
     }
   })
+
+  // 嵌套容器时，外层结束行的位置会晚于内层头行，按容器列表顺序并不等于位置顺序；
+  // 而 Decoration.set(..., sorted=true) 要求区间已按 from 升序（from 相同时按 to 降序），
+  // 否则报错导致整个插件产不出装饰（表现为所有编辑按钮消失），故先排序
+  decorations.sort((a, b) => a.from - b.from || b.to - a.to)
 
   return decorations
 }
@@ -192,13 +227,19 @@ function handleEditButtonClick(event: MouseEvent, view: EditorView): boolean {
 export const containerWidgetPlugin = ViewPlugin.fromClass(
   class {
     decorations: DecorationSet
+    /** 上次构建装饰时的注册中心版本，用于感知异步注册（不能标 private，否则导出匿名类的 dts 报 TS4094） */
+    registryVersion: number
 
     constructor(view: EditorView) {
+      this.registryVersion = componentRegistry.getVersion()
       this.decorations = Decoration.set(findContainerDecorations(view.state), true)
     }
 
-    update(update: { docChanged: boolean; state: EditorState }) {
-      if (update.docChanged) {
+    update(update: { docChanged: boolean; state: EditorState; transactions: readonly Transaction[] }) {
+      const registryChanged = componentRegistry.getVersion() !== this.registryVersion
+      const woken = update.transactions.some((tr) => tr.effects.some((e) => e.is(refreshContainers)))
+      if (update.docChanged || registryChanged || woken) {
+        this.registryVersion = componentRegistry.getVersion()
         this.decorations = Decoration.set(findContainerDecorations(update.state), true)
       }
     }

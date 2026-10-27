@@ -8,6 +8,7 @@ import Toolbar from './components/Toolbar'
 import EditDialog from './components/Dialog/EditDialog'
 import componentRegistry from './registry/componentRegistry'
 import { updateContainerProps, insertContainer } from './utils/writeContainer'
+import { refreshContainers } from './components/Editor/containerWidget'
 import type { ContainerBlock, ContainerProps } from './utils/parseContainer'
 import type { ToolbarButtonConfig, ImageUploadConfig, ComponentSchema, NotifyFn } from './types'
 import type { PreviewOptions } from './components/Preview'
@@ -80,6 +81,8 @@ const MarkdownEditorInner = (
   const [dialogVisible, setDialogVisible] = useState(false)
   const [dialogTypeName, setDialogTypeName] = useState('')
   const [dialogContainer, setDialogContainer] = useState<ContainerBlock | null>(null)
+  // 每次打开弹窗递增：作为 EditDialog 内 Form 的 key，重挂载使 initialValues 重新生效
+  const [dialogSeq, setDialogSeq] = useState(0)
 
   const app = App.useApp()
   const notify = useCallback<NotifyFn>((type, text) => {
@@ -112,6 +115,13 @@ const MarkdownEditorInner = (
 
   // 注册中心变化时重新生成工具栏按钮
   const registryVersion = useRegistryVersion()
+
+  // schema 常在编辑器挂载之后才异步注册，而注册不是 CodeMirror 事务，
+  // 不会触发 containerWidgetPlugin.update → 初始化时烘焙的 registered=false 得不到刷新，
+  // 表现为“编辑按钮一开始没有、改一个字才出现”。版本变化时 dispatch 一个空 effect 唤醒插件重建装饰。
+  useEffect(() => {
+    editorView?.dispatch({ effects: refreshContainers.of(null) })
+  }, [registryVersion, editorView])
 
   // 从注册中心（全局 + 局部）自动生成工具栏按钮
   const extraToolbarItems = useMemo<ToolbarButtonConfig[]>(() => {
@@ -165,6 +175,7 @@ const MarkdownEditorInner = (
   const handleEditContainer = useCallback((_view: EditorView, container: ContainerBlock) => {
     setDialogTypeName(container.typeName)
     setDialogContainer(container)
+    setDialogSeq((seq) => seq + 1)
     setDialogVisible(true)
   }, [])
 
@@ -176,7 +187,8 @@ const MarkdownEditorInner = (
         dialogContainer.startPos,
         dialogContainer.propsLineFrom,
         dialogContainer.propsLineTo,
-        newProps
+        newProps,
+        dialogContainer.quotePrefix
       )
     }
   }, [editorView, dialogContainer])
@@ -225,6 +237,7 @@ const MarkdownEditorInner = (
         visible={dialogVisible}
         typeName={dialogTypeName}
         currentProps={dialogContainer?.props ?? {}}
+        initKey={dialogSeq}
         onSave={handleDialogSave}
         onClose={handleDialogClose}
       />
@@ -234,18 +247,18 @@ const MarkdownEditorInner = (
 
 const MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>(MarkdownEditorInner)
 
-interface WrapperProps extends MarkdownEditorProps {
-  ref?: React.Ref<MarkdownEditorRef>
-}
-
 /**
  * 包一层 antd App：为库内部的 message 等反馈组件提供上下文；
  * 宿主已有 App 包裹时内层仅作兜底（component={false} 不额外渲染 DOM）。
+ * 注意：必须用 forwardRef 透传 ref，React 18 下普通函数组件不接收 ref 属性，
+ * 否则宿主通过 ref.getContent() 拿到的永远是空内容。
  */
-export default function MarkdownEditorWithApp({ ref, ...props }: WrapperProps) {
+const MarkdownEditorWithApp = forwardRef<MarkdownEditorRef, MarkdownEditorProps>((props, ref) => {
   return (
     <App component={false}>
       <MarkdownEditor {...props} ref={ref} />
     </App>
   )
-}
+})
+
+export default MarkdownEditorWithApp

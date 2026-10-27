@@ -34,14 +34,22 @@ function renderFormItemComponent(field: DialogField) {
 
 /**
  * 根据 fields 自动生成 Form.Item 列表
+ * 初始值走 <Form initialValues> + 按次打开的 key：
+ * initialValues 在字段实体注册时消费，天然避开“Modal 首次挂载前 setFieldsValue 落空”的时序竞态；
+ * key 每次打开变化触发 Form 重挂载，确保切换到不同容器时重新取值。
  */
-function renderAutoForm(form: FormInstance, fields: DialogField[]) {
+function renderAutoForm(
+  form: FormInstance,
+  fields: DialogField[],
+  initialValues: Record<string, unknown>,
+  initKey: number
+) {
   if (!fields || fields.length === 0) {
     return null
   }
 
   return (
-    <Form form={form} layout="vertical" preserve={false}>
+    <Form key={initKey} form={form} layout="vertical" preserve={false} initialValues={initialValues}>
       {fields.map(field => {
         if (!field.componentType) {
           return null
@@ -122,6 +130,8 @@ interface EditDialogProps {
   typeName: string
   /** 当前属性值 */
   currentProps: ContainerProps
+  /** 每次打开递增的序号：作为 Form 的 key，切换容器时触发重挂载重新取 initialValues */
+  initKey: number
   /** 保存回调 */
   onSave: (props: ContainerProps) => void
   /** 关闭回调 */
@@ -132,7 +142,7 @@ interface EditDialogProps {
  * 属性编辑弹窗组件
  * 根据组件 schema 的 renderDialog 函数渲染弹窗内容
  */
-export default function EditDialog({ visible, typeName, currentProps, onSave, onClose }: EditDialogProps) {
+export default function EditDialog({ visible, typeName, currentProps, initKey, onSave, onClose }: EditDialogProps) {
   const schema = componentRegistry.get(typeName)
   const [formProps, setFormProps] = useState<ContainerProps>({})
   const [form] = Form.useForm()
@@ -151,20 +161,28 @@ export default function EditDialog({ visible, typeName, currentProps, onSave, on
     return { ...merged, ...currentProps }
   }, [schema, currentProps])
 
-  // 仅在弹窗"由关到开"的瞬间初始化一次，避免重渲染覆盖用户正在编辑的内容
+  // 表单初始值：供 <Form initialValues> 与自定义 renderDialog 的 form.setFieldsValue 共用，
+  // 避免两处计算逻辑重复
+  const initialValues = useMemo<Record<string, unknown>>(() => {
+    const initial: Record<string, unknown> = {}
+    for (const [key, value] of Object.entries(mergedProps)) {
+      const field = schema?.fields?.find(f => f.key === key)
+      const formValue = toFormInitialValue(field ?? { key }, value)
+      if (formValue !== undefined) initial[key] = formValue
+    }
+    return initial
+  }, [mergedProps, schema])
+
+  // 弹窗“由关到开”时重置手动控制缓存与脏标志（不响应后续 props 变化，避免覆盖用户正在编辑的内容）。
+  // 字段回显统一交给 <Form initialValues>（按 initKey 重挂载）；
+  // 这里的 setFieldsValue 仅兼容自定义 renderDialog 内部自建 <Form form={form}> 的场景。
   useEffect(() => {
     if (visible) {
       setFormProps({})
-      const initial: Record<string, unknown> = {}
-      for (const [key, value] of Object.entries(mergedProps)) {
-        const field = schema?.fields?.find(f => f.key === key)
-        const formValue = toFormInitialValue(field ?? { key }, value)
-        if (formValue !== undefined) initial[key] = formValue
-      }
-      form.setFieldsValue(initial)
+      form.setFieldsValue(initialValues)
       dirtyRef.current = false
     }
-    // mergedProps 仅作为开弹窗时的快照，刻意不响应其后续变化
+    // initialValues 仅作为开弹窗时的快照，刻意不响应其后续变化
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, form])
 
@@ -236,7 +254,7 @@ export default function EditDialog({ visible, typeName, currentProps, onSave, on
     // 检查是否有字段配置了 componentType
     const hasComponentType = schema.fields?.some(f => f.componentType)
     if (hasComponentType && schema.fields) {
-      return renderAutoForm(form, schema.fields)
+      return renderAutoForm(form, schema.fields, initialValues, initKey)
     }
     return null
   }

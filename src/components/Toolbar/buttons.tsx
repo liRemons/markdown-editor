@@ -91,7 +91,9 @@ export function toggleTaskList(view: EditorView): void {
       }
     }
   }
-  view.dispatch({ changes })
+  // 行首插入前缀后，把光标映射到插入内容的后侧（空行场景下默认会落到行首，期望在前缀之后）
+  const anchor = view.state.changes(changes).mapPos(from, 1)
+  view.dispatch({ changes, selection: { anchor } })
 }
 
 /**
@@ -120,7 +122,9 @@ export function toggleLinePrefix(view: EditorView, pattern: RegExp, insertText: 
       changes.push({ from: line.from, to: line.from, insert: insertText })
     }
   }
-  view.dispatch({ changes })
+  // 行首插入前缀后，把光标映射到插入内容的后侧（空行场景下默认会落到行首，期望在前缀之后）
+  const anchor = view.state.changes(changes).mapPos(from, 1)
+  view.dispatch({ changes, selection: { anchor } })
 }
 
 /** Markdown 列表行：缩进 + 列表标记（无序/有序）+ 空白 */
