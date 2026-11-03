@@ -27,5 +27,21 @@
 
 .preview {
   height: 100%;
-  overflow: auto;
+  overflow: hidden;
+}
+
+/* 滚动下推到 .markdown-html：.markdown 撑满不滚动并保持 relative，
+   其中绝对定位的 TOC 按钮/面板（.md-toc-toggle / .md-toc-sidebar）才能固定在顶部不随正文滚走；
+   库内 .markdown 的 position: relative 同为单类选择器，靠 .preview 祖先限定提特异性、不靠加载顺序 */
+.preview .markdown {
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.preview .markdown > .markdown-html {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }

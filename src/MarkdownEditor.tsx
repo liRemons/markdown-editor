@@ -73,9 +73,11 @@ const MarkdownEditorInner = (
   const [content, setContent] = useState(value ?? defaultValue)
   const [editorView, setEditorView] = useState<EditorView | null>(null)
   const [scrollDOM, setScrollDOM] = useState<HTMLElement | null>(null)
+  // 预览侧传永久存在的 .preview 外壳（见 useScrollSync）：真正的滚动元素 .markdown-html
+  // 可能晚于挂载出现或随内容重挂，由 hook 在事件时现查，不在此缓存易变节点
   const [previewEl, setPreviewEl] = useState<HTMLDivElement | null>(null)
   const { fullscreen, toggleFullscreen } = useFullscreen()
-  useScrollSync(scrollDOM, previewEl)
+  useScrollSync(scrollDOM, previewEl, '.markdown > .markdown-html')
 
   // 容器编辑弹窗状态
   const [dialogVisible, setDialogVisible] = useState(false)

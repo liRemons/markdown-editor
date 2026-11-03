@@ -24,3 +24,6 @@ dist-ssr
 *.sw?
 
 .npmrc
+
+# 临时提交信息文件
+COMMIT_MSG*
