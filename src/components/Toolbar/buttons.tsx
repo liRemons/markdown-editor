@@ -3,6 +3,7 @@ import type { EditorState } from '@codemirror/state'
 import { syntaxTree } from '@codemirror/language'
 import type { SyntaxNode } from '@lezer/common'
 import type { ImageUploadConfig } from '../../types'
+import { findWrap, parseTagBase, type WrapInfo } from '../../utils/wrapTag'
 
 /**
  * 在光标位置插入文本
@@ -355,16 +356,41 @@ export function uploadImage(
 
 /**
  * 用前缀和后缀包裹选中文本
+ * @returns 新包裹的位置信息（选区为空未包裹时返回 null），供属性编辑弹窗定位使用
  */
-export function wrapSelection(view: EditorView, prefix: string, suffix: string): void {
+export function wrapSelection(
+  view: EditorView,
+  prefix: string,
+  suffix: string
+): WrapInfo | null {
   const { from, to, empty } = view.state.selection.main
-  if (empty) return
+  if (empty) return null
   const selected = view.state.doc.sliceString(from, to)
   view.dispatch({ changes: { from, to, insert: `${prefix}${selected}${suffix}` } })
+  return {
+    openFrom: from,
+    openTo: from + prefix.length,
+    closeFrom: from + prefix.length + selected.length,
+    closeTo: from + prefix.length + selected.length + suffix.length,
+    base: parseTagBase(prefix),
+    openText: prefix,
+  }
+}
+
+/** 移除一处标签包裹（删除开闭标签两段文本，保留内部内容） */
+export function removeWrap(view: EditorView, info: WrapInfo): void {
+  view.focus()
+  view.dispatch({
+    changes: [
+      { from: info.openFrom, to: info.openTo, insert: '' },
+      { from: info.closeFrom, to: info.closeTo, insert: '' },
+    ],
+  })
 }
 
 /**
  * 切换包裹：选中的文本已包含标签则移除，否则添加
+ * 检测按标签名匹配，带属性的变体（如 <u style="...">）同样能被识别移除
  */
 export function toggleWrap(
   view: EditorView,
@@ -372,44 +398,18 @@ export function toggleWrap(
   closeTag: string
 ): void {
   const { from, to, empty } = view.state.selection.main
-  const doc = view.state.doc
-
-  // 选区完整包含标签 → 移除
-  if (!empty) {
-    const selected = doc.sliceString(from, to)
-    if (selected.startsWith(openTag) && selected.endsWith(closeTag)) {
-      const inner = selected.slice(openTag.length, -closeTag.length)
-      view.dispatch({ changes: { from, to, insert: inner } })
-      return
-    }
+  const base = parseTagBase(openTag)
+  if (findWrap(view.state.doc, from, to, empty, base)) {
+    unwrapAtCursor(view, base)
+    return
   }
-
-  // 光标/选区在标签内部 → 查找当前行的标签并移除
-  {
-    const cursorPos = empty ? from : to
-    const line = doc.lineAt(cursorPos)
-    const lineText = doc.sliceString(line.from, line.to)
-    const openIdx = lineText.indexOf(openTag)
-    const closeIdx = lineText.lastIndexOf(closeTag)
-
-    if (openIdx >= 0 && closeIdx > openIdx) {
-      const absOpen = line.from + openIdx
-      const absClose = line.from + closeIdx
-      // 确认光标/选区在标签范围内
-      if (cursorPos >= absOpen + openTag.length && cursorPos <= absClose) {
-        const inner = doc.sliceString(absOpen + openTag.length, absClose)
-        view.dispatch({
-          changes: {
-            from: absOpen,
-            to: absClose + closeTag.length,
-            insert: inner,
-          },
-        })
-        return
-      }
-    }
-  }
-
-  // 默认：添加包裹
   wrapSelection(view, openTag, closeTag)
+}
+
+/** 定位并移除光标/选区处的同名标签包裹（供属性弹窗的移除动作复用） */
+function unwrapAtCursor(view: EditorView, base: string): void {
+  const { from, to, empty } = view.state.selection.main
+  const info = findWrap(view.state.doc, from, to, empty, base)
+  if (!info) return
+  removeWrap(view, info)
 }

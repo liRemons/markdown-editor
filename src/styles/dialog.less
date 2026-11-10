@@ -34,3 +34,15 @@
   resize: vertical;
   font-family: inherit;
 }
+
+/* 带“移除包裹”危险动作的底部：左删除右确认 */
+.edit-dialog-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  .edit-dialog-footer-right-handle {
+    display: inline-flex;
+    gap: 6px
+  }
+}

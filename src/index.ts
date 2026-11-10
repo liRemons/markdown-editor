@@ -18,6 +18,9 @@ export type {
 } from './types'
 export type { PreviewOptions } from './components/Preview'
 export type { ContainerProps, ContainerBlock } from './utils/parseContainer'
+export type { WrapInfo } from './utils/wrapTag'
+// wrapTags 多容器变体的弹窗元字段名（宿主 fields/renderDialog 中作为类型下拉的 key）
+export { TAG_BASE_KEY } from './utils/wrapTag'
 
 // 全局样式（主题变量 + 组件样式，随入口自动携带）
 import './styles/index.less';

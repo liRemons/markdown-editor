@@ -6,6 +6,8 @@ import { useToolbar } from './hooks/useToolbar'
 import { ToolbarItemRenderer } from './renderers/ToolbarItemRenderer'
 import TableDropdown from './renderers/TablePicker/TableDropdown'
 import type { ToolbarButtonConfig, ImageUploadConfig, NotifyFn } from '../../types'
+import type { WrapInfo } from '../../utils/wrapTag'
+import type { ContainerProps } from '../../utils/parseContainer'
 
 interface ToolbarProps {
   editorView: EditorView | null
@@ -17,10 +19,12 @@ interface ToolbarProps {
   uploadConfig?: ImageUploadConfig
   /** 提示注入点（由宿主提供） */
   notify?: NotifyFn
+  /** 打开 wrapTags 属性编辑弹窗 */
+  onOpenWrapDialog?: (info: WrapInfo | null, typeName: string, props: ContainerProps) => void
 }
 
-function Toolbar({ editorView, fullscreen = true, onToggleFullscreen, extraItems, uploadConfig, notify }: ToolbarProps) {
-  const { config, extraItemsConfig, handleClick } = useToolbar(editorView, { extraItems, uploadConfig, notify })
+function Toolbar({ editorView, fullscreen = true, onToggleFullscreen, extraItems, uploadConfig, notify, onOpenWrapDialog }: ToolbarProps) {
+  const { config, extraItemsConfig, handleClick } = useToolbar(editorView, { extraItems, uploadConfig, notify, onOpenWrapDialog })
 
   const renderFullscreen = useCallback(() => {
     if (!onToggleFullscreen) return null

@@ -1,9 +1,10 @@
 import { useState, useMemo, useEffect, useRef, type FC } from 'react'
-import { Modal, Form, Input, InputNumber, Select, Switch, Slider, Rate, DatePicker, ColorPicker } from 'antd'
+import { Modal, Form, Input, InputNumber, Select, Switch, Slider, Rate, DatePicker, ColorPicker, Button } from 'antd'
 import type { FormInstance, FormItemProps } from 'antd'
 import dayjs from 'dayjs'
 import type { Dayjs } from 'dayjs'
 import componentRegistry from '../../registry/componentRegistry'
+import { parseTagBase } from '../../utils/wrapTag'
 import type { DialogField } from '../../types'
 import type { ContainerProps } from '../../utils/parseContainer'
 
@@ -126,7 +127,7 @@ function normalizeValue(field: DialogField | undefined, value: unknown): string 
 interface EditDialogProps {
   /** 弹窗是否显示 */
   visible: boolean
-  /** 容器类型名称 */
+  /** 容器类型名称（wrapTags 模式下为标签基名，名称不一致时按 wrapTags 回退匹配 schema） */
   typeName: string
   /** 当前属性值 */
   currentProps: ContainerProps
@@ -136,14 +137,21 @@ interface EditDialogProps {
   onSave: (props: ContainerProps) => void
   /** 关闭回调 */
   onClose: () => void
+  /** 移除包裹回调（仅 wrapTags 属性弹窗提供，展示底部危险动作按钮） */
+  onRemove?: () => void
 }
 
 /**
  * 属性编辑弹窗组件
  * 根据组件 schema 的 renderDialog 函数渲染弹窗内容
  */
-export default function EditDialog({ visible, typeName, currentProps, initKey, onSave, onClose }: EditDialogProps) {
-  const schema = componentRegistry.get(typeName)
+export default function EditDialog({ visible, typeName, currentProps, initKey, onSave, onClose, onRemove }: EditDialogProps) {
+  // 容器模式按注册名命中；wrapTags 模式传来的是标签基名（如 center-container），
+  // 与 schema.name（如 centerContainer）不一致时按 wrapTags 基名回退匹配
+  const schema = componentRegistry.get(typeName) ?? componentRegistry.getAll().find(s => {
+    const openTag = s.wrapTags?.[0]
+    return openTag !== undefined && parseTagBase(openTag) === typeName
+  })
   const [formProps, setFormProps] = useState<ContainerProps>({})
   const [form] = Form.useForm()
 
@@ -263,10 +271,21 @@ export default function EditDialog({ visible, typeName, currentProps, initKey, o
     <Modal
       title={`${schema.label} 属性编辑`}
       open={visible}
+      width={500}
       onOk={handleOk}
       onCancel={handleClose}
       okText="保存"
       cancelText="取消"
+      footer={onRemove ? (
+        <div className="edit-dialog-footer">
+          <Button danger onClick={onRemove}>移除包裹</Button>
+          <span className="edit-dialog-footer-right-handle">
+            <Button onClick={handleClose}>取消</Button>
+            <Button type="primary" onClick={handleOk}>保存</Button>
+          </span>
+        </div>
+      ) : undefined
+      }
     >
       {renderDialogContent()}
     </Modal>

@@ -20,6 +20,15 @@ export interface ToolbarButtonConfig {
   customRender?: () => React.ReactNode
   // 标签包裹配置：设置为 [openTag, closeTag] 时，点击按钮会切换选中文本的标签包裹（替代 handler）
   wrapTags?: [string, string]
+  /**
+   * 单按钮多容器变体：该按钮可切换输出的标签基名列表（如 ['plugin-container','center-container']）。
+   * 缺省时仅识别 wrapTags[0] 的单一基名。
+   */
+  wrapBases?: string[]
+  /** 生成按钮对应的 schema 名称：wrapTags 多变体下基名与注册名不同，供弹窗稳定解析 schema */
+  schemaName?: string
+  // 标签包裹模式下配合 wrapTags 使用：存在时点击改为打开属性编辑弹窗（已包裹则回显开标签属性）
+  fields?: DialogField[]
   // 是否禁用该按钮
   disabled?: boolean
 }
@@ -83,9 +92,16 @@ export interface ComponentSchema {
   icon?: React.ComponentType
   /**
    * 标签包裹配置：设置为 [openTag, closeTag] 时，使用标签包裹模式（而非 :::name 容器）
-   * 配置后无需提供 fields 和 renderDialog
+   * 不提供 fields 时为纯包裹/解包裹切换；
+   * 提供 fields 时开标签支持 HTML 属性（形如 `<tag key="value">`），
+   * 点击按钮打开弹窗编辑属性，新包裹先按默认属性写入再唤起弹窗配置。
    */
   wrapTags?: [string, string]
+  /**
+   * 单按钮多容器变体：此按钮可切换输出的标签基名列表（如 ['plugin-container','center-container']）。
+   * fields 中包含 key 为 `__tagBase` 的元字段时，其值决定最终包裹标签，保存时开/闭标签随之重写。
+   */
+  wrapBases?: string[]
   /** 弹窗属性配置 — 用于定义 Markdown 内容中需要填充的字段（wrapTags 模式下可选） */
   fields?: DialogField[]
   /**

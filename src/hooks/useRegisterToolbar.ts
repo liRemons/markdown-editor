@@ -92,6 +92,27 @@ import type { ComponentSchema } from '../types'
  *   return <MarkdownEditor />
  * }
  * ```
+ *
+ * @example 标签包裹 + 属性编辑模式（开标签携带 HTML 属性，点击弹窗回显编辑）
+ * ```tsx
+ * function MyPage() {
+ *   useRegisterToolbar({
+ *     name: 'centerContainer',
+ *     label: '居中容器',
+ *     icon: <AlignCenterOutlined />,
+ *     // 基名取自开标签，属性形如 key="value" 直出 HTML
+ *     wrapTags: ['<center-container>', '</center-container>'],
+ *     fields: [
+ *       { key: 'style', name: '样式', defaultValue: 'display:block;text-align:center;' },
+ *     ],
+ *     renderDialog: ({ form }) => (
+ *       // 自定义样式编辑器，把每行一条 key: value 的文本同步回 name="style" 字段
+ *       <StyleLinesEditor form={form} />
+ *     ),
+ *   })
+ *   return <MarkdownEditor />
+ * }
+ * ```
  * 
  * @example 批量注册
  * ```tsx

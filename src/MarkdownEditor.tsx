@@ -9,6 +9,7 @@ import EditDialog from './components/Dialog/EditDialog'
 import componentRegistry from './registry/componentRegistry'
 import { updateContainerProps, insertContainer } from './utils/writeContainer'
 import { refreshContainers } from './components/Editor/containerWidget'
+import { buildOpenTag, parseWrapAttributes as parseWrapAttributesFromText, TAG_BASE_KEY, type WrapInfo } from './utils/wrapTag'
 import type { ContainerBlock, ContainerProps } from './utils/parseContainer'
 import type { ToolbarButtonConfig, ImageUploadConfig, ComponentSchema, NotifyFn } from './types'
 import type { PreviewOptions } from './components/Preview'
@@ -86,6 +87,12 @@ const MarkdownEditorInner = (
   // 每次打开弹窗递增：作为 EditDialog 内 Form 的 key，重挂载使 initialValues 重新生效
   const [dialogSeq, setDialogSeq] = useState(0)
 
+  // wrapTags 属性编辑弹窗状态：容器与包裹两种编辑态互斥
+  const [wrapDialogVisible, setWrapDialogVisible] = useState(false)
+  const [wrapTypeName, setWrapTypeName] = useState('')
+  const [wrapDialogProps, setWrapDialogProps] = useState<ContainerProps>({})
+  const wrapInfoRef = useRef<WrapInfo | null>(null)
+
   const app = App.useApp()
   const notify = useCallback<NotifyFn>((type, text) => {
     if (onNotify) {
@@ -135,13 +142,16 @@ const MarkdownEditorInner = (
       merged.set(schema.name, schema)
     }
     return [...merged.values()].flatMap(schema => {
-      // 支持 wrapTags 的标签包裹模式
+      // 支持 wrapTags 的标签包裹模式（配了 fields 时点击转为属性编辑弹窗）
       if (schema.wrapTags) {
         return {
           id: `wrap-${schema.name}`,
+          schemaName: schema.name,
           label: schema.label,
           icon: schema.icon ?? ReadOutlined,
           wrapTags: schema.wrapTags,
+          wrapBases: schema.wrapBases,
+          fields: schema.fields,
         }
       }
       // 容器插入模式
@@ -181,6 +191,15 @@ const MarkdownEditorInner = (
     setDialogVisible(true)
   }, [])
 
+  // 工具栏 wrapTags 按钮点击：携带当前包裹位置与回显属性打开属性弹窗
+  const handleOpenWrapDialog = useCallback((info: WrapInfo | null, typeName: string, props: ContainerProps) => {
+    wrapInfoRef.current = info
+    setWrapTypeName(typeName)
+    setWrapDialogProps(props)
+    setDialogSeq((seq) => seq + 1)
+    setWrapDialogVisible(true)
+  }, [])
+
   // 保存容器属性（仅写回编辑器，不关闭弹窗；关闭由 EditDialog 内部控制）
   const handleDialogSave = useCallback((newProps: ContainerProps) => {
     if (editorView && dialogContainer) {
@@ -198,6 +217,65 @@ const MarkdownEditorInner = (
   // 关闭弹窗
   const handleDialogClose = useCallback(() => {
     setDialogVisible(false)
+  }, [])
+
+  // 保存 wrapTags 开标签属性：支持弹窗内切换标签类型（__tagBase）时同步重写闭标签；
+  // 保留弹窗未收编的存量属性（如 class），刷新包裹位置供连续保存
+  const handleWrapSave = useCallback((newProps: ContainerProps) => {
+    const info = wrapInfoRef.current
+    if (!editorView || !info) return
+    // 目标基名：弹窗元字段优先，否则沿用当前包裹基名
+    const meta = newProps[TAG_BASE_KEY]
+    const targetBase = (meta === undefined || meta === '' ? info.base : String(meta)) || info.base
+    // 剩除元字段后的普通属性与存量属性合并（存量优先保留未受弹窗接管的 class 等）
+    const attrInput: ContainerProps = {}
+    for (const [k, v] of Object.entries(newProps)) {
+      if (k !== TAG_BASE_KEY) attrInput[k] = v
+    }
+    const attrs: ContainerProps = { ...parseWrapAttributesFromText(info.openText), ...attrInput }
+    for (const [k, v] of Object.entries(attrs)) {
+      if (v === '' || v === undefined || v === null) delete attrs[k]
+    }
+    const nextOpen = buildOpenTag(targetBase, attrs)
+    const nextClose = `</${targetBase}>`
+    const changes: Array<{ from: number; to: number; insert: string }> = [
+      { from: info.openFrom, to: info.openTo, insert: nextOpen },
+    ]
+    // 基名变化（或旧闭标签文本不一致）时同步重写闭标签
+    const curClose = editorView.state.doc.sliceString(info.closeFrom, info.closeTo)
+    if (curClose !== nextClose) changes.push({ from: info.closeFrom, to: info.closeTo, insert: nextClose })
+    editorView.dispatch({ changes })
+    // 重算包裹位置（仅开标签长度变化影响其后偏移）供连续保存
+    const openDelta = nextOpen.length - (info.openTo - info.openFrom)
+    const newCloseFrom = info.closeFrom + openDelta
+    wrapInfoRef.current = {
+      openFrom: info.openFrom,
+      openTo: info.openFrom + nextOpen.length,
+      closeFrom: newCloseFrom,
+      closeTo: newCloseFrom + nextClose.length,
+      base: targetBase,
+      openText: nextOpen,
+    }
+  }, [editorView])
+
+  // 移除包裹：删除开闭标签，保留内部内容
+  const handleWrapRemove = useCallback(() => {
+    const info = wrapInfoRef.current
+    if (!editorView || !info) return
+    editorView.dispatch({
+      changes: [
+        { from: info.openFrom, to: info.openTo, insert: '' },
+        { from: info.closeFrom, to: info.closeTo, insert: '' },
+      ],
+    })
+    editorView.focus()
+    wrapInfoRef.current = null
+    setWrapDialogVisible(false)
+  }, [editorView])
+
+  const handleWrapDialogClose = useCallback(() => {
+    setWrapDialogVisible(false)
+    wrapInfoRef.current = null
   }, [])
 
   const editorNode = (
@@ -221,6 +299,7 @@ const MarkdownEditorInner = (
         extraItems={extraToolbarItems}
         uploadConfig={uploadConfig}
         notify={notify}
+        onOpenWrapDialog={handleOpenWrapDialog}
       />
       {showPreview ? (
         <SplitPanels
@@ -242,6 +321,16 @@ const MarkdownEditorInner = (
         initKey={dialogSeq}
         onSave={handleDialogSave}
         onClose={handleDialogClose}
+      />
+      {/* wrapTags 开标签属性编辑弹窗（带移除包裹动作） */}
+      <EditDialog
+        visible={wrapDialogVisible}
+        typeName={wrapTypeName}
+        currentProps={wrapDialogProps}
+        initKey={dialogSeq}
+        onSave={handleWrapSave}
+        onClose={handleWrapDialogClose}
+        onRemove={handleWrapRemove}
       />
     </div>
   )
