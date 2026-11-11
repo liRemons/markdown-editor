@@ -101,7 +101,7 @@ import type { ComponentSchema } from '../types'
  *     label: '居中容器',
  *     icon: <AlignCenterOutlined />,
  *     // 基名取自开标签，属性形如 key="value" 直出 HTML
- *     wrapTags: ['<center-container>', '</center-container>'],
+ *     wrapTags: ['<poetry-container>', '</poetry-container>'],
  *     fields: [
  *       { key: 'style', name: '样式', defaultValue: 'display:block;text-align:center;' },
  *     ],

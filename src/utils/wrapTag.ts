@@ -29,7 +29,7 @@ export interface WrapInfo {
   openText: string
 }
 
-/** 从开/闭标签文本取标签名：`<u>` / `<center-container style="...">` → u / center-container */
+/** 从开/闭标签文本取标签名：`<u>` / `<poetry-container style="...">` → u / poetry-container */
 export function parseTagBase(tag: string): string {
   return tag.replace(/^<\//, '').replace(/^</, '').replace(/>\s*$/, '').split(/\s+/)[0]
 }

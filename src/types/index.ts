@@ -21,7 +21,7 @@ export interface ToolbarButtonConfig {
   // 标签包裹配置：设置为 [openTag, closeTag] 时，点击按钮会切换选中文本的标签包裹（替代 handler）
   wrapTags?: [string, string]
   /**
-   * 单按钮多容器变体：该按钮可切换输出的标签基名列表（如 ['plugin-container','center-container']）。
+   * 单按钮多容器变体：该按钮可切换输出的标签基名列表（如 ['plugin-container','poetry-container']）。
    * 缺省时仅识别 wrapTags[0] 的单一基名。
    */
   wrapBases?: string[]
@@ -98,7 +98,7 @@ export interface ComponentSchema {
    */
   wrapTags?: [string, string]
   /**
-   * 单按钮多容器变体：此按钮可切换输出的标签基名列表（如 ['plugin-container','center-container']）。
+   * 单按钮多容器变体：此按钮可切换输出的标签基名列表（如 ['plugin-container','poetry-container']）。
    * fields 中包含 key 为 `__tagBase` 的元字段时，其值决定最终包裹标签，保存时开/闭标签随之重写。
    */
   wrapBases?: string[]

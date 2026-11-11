@@ -146,7 +146,7 @@ interface EditDialogProps {
  * 根据组件 schema 的 renderDialog 函数渲染弹窗内容
  */
 export default function EditDialog({ visible, typeName, currentProps, initKey, onSave, onClose, onRemove }: EditDialogProps) {
-  // 容器模式按注册名命中；wrapTags 模式传来的是标签基名（如 center-container），
+  // 容器模式按注册名命中；wrapTags 模式传来的是标签基名（如 poetry-container），
   // 与 schema.name（如 centerContainer）不一致时按 wrapTags 基名回退匹配
   const schema = componentRegistry.get(typeName) ?? componentRegistry.getAll().find(s => {
     const openTag = s.wrapTags?.[0]
